@@ -1,0 +1,625 @@
+{
+    "persona1": {
+      "name": "Christian Gaillard",
+      "email": "christian.gaillard@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": false,
+      "parent": null
+    },
+    "persona2": {
+      "name": "Georges Fabre",
+      "email": "george.fabre@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "christian.gaillard@gmx.com"
+    },
+    "persona3": {
+      "name": "Hugo Germain",
+      "email": "hugo.germain@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "christian.gaillard@gmx.com"
+    },
+    "persona4": {
+      "name": "Isaac Lecompte",
+      "email": "isaac.lecompte@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "christian.gaillard@gmx.com"
+    },
+    "persona5": {
+      "name": "Jules Carpentier",
+      "email": "jules.carpentier@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "christian.gaillard@gmx.com"
+    },
+    "persona6": {
+      "name": "Louis Lopez",
+      "email": "louis.lopez@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "christian.gaillard@gmx.com"
+    },
+    "persona7": {
+      "name": "Lucas Paris",
+      "email": "lucas.paris@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "christian.gaillard@gmx.com"
+    },
+    "persona8": {
+      "name": "Nathan Langlois",
+      "email": "nathan.langlois@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "christian.gaillard@gmx.com"
+    },
+    "persona9": {
+      "name": "Paul Dumas",
+      "email": "paul.dumas@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "christian.gaillard@gmx.com"
+    },
+    "persona10": {
+      "name": "Antoine Petit",
+      "email": "antoine.petit@caramail.fr",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": false,
+      "parent": null
+    },
+    "persona11": {
+      "name": "Nathan Bonnet",
+      "email": "nathan.bonnet@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "antoine.petit@caramail.fr"
+    },
+    "persona12": {
+      "name": "Thomas Martin",
+      "email": "thomas.martin@gmx.ca",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "antoine.petit@caramail.fr"
+    },
+    "persona13": {
+      "name": "Arthur Dupont",
+      "email": "arthur.dupont@gmx.ca",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "antoine.petit@caramail.fr"
+    },
+    "persona14": {
+      "name": "Éric Lambert",
+      "email": "eric.lambert@caramail.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "antoine.petit@caramail.fr"
+    },
+    "persona15": {
+      "name": "Raphaël Roux",
+      "email": "raphael.roux@caramail.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "antoine.petit@caramail.fr"
+    },
+    "persona16": {
+      "name": "Simon Michel",
+      "email": "simon.michel@caramail.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "antoine.petit@caramail.fr"
+    },
+    "persona17": {
+      "name": "Paul Fournier",
+      "email": "paul.fournier@caramail.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "antoine.petit@caramail.fr"
+    },
+    "persona18": {
+      "name": "Lucas Girard",
+      "email": "lucas.girard@caramail.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "antoine.petit@caramail.fr"
+    },
+    "persona19": {
+      "name": "Benjamin Fontaine",
+      "email": "benjamin.fontaine@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "antoine.petit@caramail.fr"
+    },
+    "persona20": {
+      "name": "Thomas Leroy",
+      "email": "thomas.leroy@caramail.fr",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": null
+    },
+    "persona21": {
+      "name": "Adrien Rousseau",
+      "email": "adrien.rousseau@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "thomas.leroy@caramail.fr"
+    },
+    "persona22": {
+      "name": "Mathieu Vincent",
+      "email": "mathieu.vincent@caramail.fr",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "thomas.leroy@caramail.fr"
+    },
+    "persona23": {
+      "name": "Gabriel Leroy",
+      "email": "gabriel.leroy@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "thomas.leroy@caramail.fr"
+    },
+    "persona24": {
+      "name": "Hugo Lefebvre",
+      "email": "hugo.lefebvre@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "thomas.leroy@caramail.fr"
+    },
+    "persona25": {
+      "name": "Louis Bertrand",
+      "email": "louis.bertrand@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "thomas.leroy@caramail.fr"
+    },
+    "persona26": {
+      "name": "Jules Morel",
+      "email": "jules.morel@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "thomas.leroy@caramail.fr"
+    },
+    "persona27": {
+      "name": "Augustin Faure",
+      "email": "augustin.faure@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "thomas.leroy@caramail.fr"
+    },
+    "persona28": {
+      "name": "Léon Lefevre",
+      "email": "leon.lefevre@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "thomas.leroy@caramail.fr"
+    },
+    "persona29": {
+      "name": "Valentin André",
+      "email": "valentin.andre@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": true,
+      "parent": "thomas.leroy@caramail.fr"
+    },
+    "persona30": {
+      "name": "Nicolas Martin",
+      "email": "nicolas.martin@caramail.fr",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": false,
+      "parent": null
+    },
+    "persona31": {
+      "name": "Julien Mercier",
+      "email": "julien.mercier@gmx.com",
+      "password": "",
+      "alias": true,
+      "parent": "nicolas.martin@caramail.fr"
+    },
+    "persona32": {
+      "name": "Antoine Dupont",
+      "email": "antoine.dupont@gmx.com",
+      "password": "",
+      "alias": true,
+      "parent": "nicolas.martin@caramail.fr"
+    },
+    "persona33": {
+        "name": "Léo Morin",
+        "email": "leo.morin@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "nicolas.martin@caramail.fr"
+    },
+    "persona34": {
+        "name": "Maël Nicolas",
+        "email": "mael.nicolas@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "nicolas.martin@caramail.fr"
+    },
+    "persona35": {
+        "name": "Eliott Roussel",
+        "email": "eliott.roussel@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "nicolas.martin@caramail.fr"
+    },
+    "persona36": {
+        "name": "Axel Gautier",
+        "email": "axel.gautier@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "nicolas.martin@caramail.fr"
+    },
+    "persona37": {
+        "name": "Milo Mathieu",
+        "email": "milo.mathieu@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "nicolas.martin@caramail.fr"
+    },
+    "persona38": {
+        "name": "Malo Masson",
+        "email": "malo.masson@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "nicolas.martin@caramail.fr"
+    },
+    "persona39": {
+        "name": "Jonas Marchand",
+        "email": "jonas.marchand@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "nicolas.martin@caramail.fr"
+    },
+    "persona40": {
+        "name": "Emil Duval",
+        "email": "emil.duval@gmx.com",
+        "password": "FlSO0mkqv%c#bx",
+        "alias": true,
+        "parent": null
+    },
+    "persona41": {
+        "name": "Timothée Dumont",
+        "email": "timothee.dumont@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "emil.duval@gmx.com"
+    },
+    "persona42": {
+        "name": "Aymeric Meunier",
+        "email": "aymeric.meunier@caramail.com",
+        "password": "",
+        "alias": true,
+        "parent": "emil.duval@gmx.com"
+      },
+    "persona43": {
+        "name": "Eliott Roussel",
+        "email": "eliott.roussel@caramail.com",
+        "password": "",
+        "alias": true,
+        "parent": "emil.duval@gmx.com"
+    },
+    "persona44": {
+      "name": "Axel Gautier",
+      "email": "axel.gautier@caramail.com", 
+      "password": "",
+      "alias": true,
+      "parent": "emil.duval@gmx.com"
+    },
+    "persona45": {
+        "name": "Milo Mathieu",
+        "email": "milo.mathieu@caramail.com",
+        "password": "",
+        "alias": true,
+        "parent": "emil.duval@gmx.com"
+    },
+    "persona46": {
+        "name": "Malo Masson",
+        "email": "malo.masson@caramail.com",
+        "password": "",
+        "alias": true,
+        "parent": "emil.duval@gmx.com"
+    },
+    "persona47": {
+        "name": "Jonas Marchand",
+        "email": "jonas.marchand@caramail.com",
+        "password": "",
+        "alias": true,
+        "parent": "emil.duval@gmx.com"
+    },
+    "persona48": {
+        "name": "Thibault Bertin",
+        "email": "thibault.bertin@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "emil.duval@gmx.com"
+    },
+    "persona49": {
+        "name": "Valentin Herve",
+        "email": "valentin.herve@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "emil.duval@gmx.com"
+    },
+    "persona50": {
+        "name": "François Moreau",
+        "email": "francois.moreau@caramail.fr",
+        "password": "FlSO0mkqv%c#bx",
+        "alias": false,
+        "parent": null
+    },
+    "persona51": {
+        "name": "Loïc Marie",
+        "email": "loic.marie@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "francois.moreau@caramail.fr"
+    },
+    "persona52": {
+        "name": "Yann Noel",
+        "email": "yann.noel@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "francois.moreau@caramail.fr"
+    },
+    "persona53": {
+        "name": "Arnaud Meyer",
+        "email": "arnaud.meyer@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "francois.moreau@caramail.fr"
+    },
+    "persona54": {
+        "name": "Fabien Dufour",
+        "email": "fabien.dufour@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "francois.moreau@caramail.fr"
+    },
+    "persona55": {
+        "name": "Gaël Meunier",
+        "email": "gael.meunier@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "francois.moreau@caramail.fr"
+    },
+    "persona56": {
+        "name": "Maxence Schneider",
+        "email": "maxence.schneider@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "francois.moreau@caramail.fr"
+    },
+    "persona57": {
+        "name": "Victor Joly",
+        "email": "victor.joly@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "francois.moreau@caramail.fr"
+    },
+    "persona58": {
+        "name": "Alban Gaillard",
+        "email": "alban.gaillard@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "francois.moreau@caramail.fr"
+    },
+    "persona59": {
+        "name": "Quentin Bouvier",
+        "email": "quentin.bouvier@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "francois.moreau@caramail.fr"
+    },
+    "persona60": {
+      "name": "Sébastien Lefebvre",
+      "email": "sebastien.lefebvre@caramail.fr",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": false,
+      "parent": null
+    },
+    "persona61": {
+        "name": "Charles Renard",
+        "email": "charles.renard@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "sebastien.lefebvre@caramail.fr"
+    },
+    "persona62": {
+        "name": "Xavier Roche",
+        "email": "xavier.roche@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "sebastien.lefebvre@caramail.fr"
+    },
+    "persona63": {
+        "name": "Hugo Schmitt",
+        "email": "hugo.schmitt@caramail.fr",
+        "password": "",
+        "alias": true,
+        "parent": "sebastien.lefebvre@caramail.fr"
+    },
+    "persona64": {
+        "name": "Florian Royer",
+        "email": "florian.royer@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "sebastien.lefebvre@caramail.fr"
+    },
+    "persona65": {
+        "name": "Damien Leroux",
+        "email": "damien.leroux@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "sebastien.lefebvre@caramail.fr"
+    },
+    "persona66": {
+        "name": "Lucas Colin",
+        "email": "lucas.colin@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "sebastien.lefebvre@caramail.fr"
+    },
+    "persona67": {
+        "name": "Simon Vidal",
+        "email": "simon.vidal@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "sebastien.lefebvre@caramail.fr"
+    },
+    "persona68": {
+        "name": "Quentin Picard",
+        "email": "quentin.picard@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "sebastien.lefebvre@caramail.fr"
+    },
+    "persona69": {
+        "name": "Rémi Roger",
+        "email": "remi.roger@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "sebastien.lefebvre@caramail.fr"
+    },
+    "persona70": {
+      "name": "Maxime Girard",
+      "email": "maxime.girard@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": false,
+      "parent": null
+    },
+    "persona71": {
+        "name": "Fabien Aubert",
+        "email": "fabien.aubert@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "maxime.girard@gmx.com"
+    },
+    "persona72": {
+        "name": "Charles Lemoine",
+        "email": "charles.lemoine@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "maxime.girard@gmx.com"
+    },
+    "persona73": {
+        "name": "Jules Renaud",
+        "email": "jules.renaud@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "maxime.girard@gmx.com"
+    },
+    "persona74": {
+        "name": "Thibault Dumas",
+        "email": "thibault.dumas@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "maxime.girard@gmx.com"
+    },
+    "persona75": {
+        "name": "Adrien Lacroix",
+        "email": "adrien.lacroix@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "maxime.girard@gmx.com"
+    },
+    "persona76": {
+        "name": "Victor Olivier",
+        "email": "victor.olivier@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "maxime.girard@gmx.com"
+    },
+    "persona77": {
+        "name": "Louis Philippe",
+        "email": "louis.philippe@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "maxime.girard@gmx.com"
+    },
+    "persona78": {
+        "name": "Simons Pierre",
+        "email": "simons.pierre@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "maxime.girard@gmx.com"
+    },
+    "persona79": {
+        "name": "Quentin Bourgeois",
+        "email": "quentin.bourgeois@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "maxime.girard@gmx.com"
+    },
+    "persona80": {
+      "name": "Vincent Fournier",
+      "email": "vincent.fournier@gmx.com",
+      "password": "FlSO0mkqv%c#bx",
+      "alias": false,
+      "parent": null
+    },
+    "persona81": {
+        "name": "Benoît Rey",
+        "email": "benoit.rey@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "vincent.fournier@gmx.com"
+    },
+    "persona82": {
+        "name": "Mathis Leclerc",
+        "email": "mathis.leclerc@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "vincent.fournier@gmx.com"
+    },
+    "persona83": {
+        "name": "Alexis Leclercq",
+        "email": "alexis.leclercq@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "vincent.fournier@gmx.com"
+    },
+    "persona84": {
+        "name": "Enzo Guillaume",
+        "email": "enzo.guillaume@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "vincent.fournier@gmx.com"
+    },
+    "persona85": {
+        "name": "Léo Lecomte",
+        "email": "leo.lecomte@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "vincent.fournier@gmx.com"
+    },
+    "persona86": {
+        "name": "Nolan Lopez",
+        "email": "nolan.lopez@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "vincent.fournier@gmx.com"
+    },
+    "persona87": {
+        "name": "Sacha Jean",
+        "email": "sacha.jean@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "vincent.fournier@gmx.com"
+    },
+    "persona88": {
+        "name": "Hugo Hubert",
+        "email": "hugo.hubert@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "vincent.fournier@gmx.com"
+    },
+    "persona89": {
+        "name": "Kylian Dupuy",
+        "email": "kylian.dupuy@gmx.com",
+        "password": "",
+        "alias": true,
+        "parent": "vincent.fournier@gmx.com"
+    }
+}

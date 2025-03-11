@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>CV - {{ name }}</title>
+</head>
+<body>
+    <h1>{{ name }}</h1>
+    <h2>{{ title }}</h2>
+    
+    <h3>Contact</h3>
+    <ul>
+        <li>Email : {{ contact.email }}</li>
+        <li>Téléphone : {{ contact.phone }}</li>
+        <li>LinkedIn : <a href="{{ contact.linkedin }}">{{ contact.linkedin }}</a></li>
+    </ul>
+
+    <h3>Compétences</h3>
+    <ul>
+        {% for skill in skills %}
+        <li>{{ skill }}</li>
+        {% endfor %}
+    </ul>
+
+    <h3>Expérience professionnelle</h3>
+    {% for job in experience %}
+        <div>
+            <strong>{{ job.title }}</strong> - {{ job.company }} ({{ job.dates }})
+            <p>{{ job.location }}</p>
+            <ul>
+                {% for detail in job.details %}
+                <li>{{ detail }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endfor %}
+
+    <h3>Éducation</h3>
+    {% for edu in education %}
+        <div>
+            <strong>{{ edu.degree }}</strong> - {{ edu.school }} ({{ edu.dates }})
+        </div>
+    {% endfor %}
+</body>
+</html>

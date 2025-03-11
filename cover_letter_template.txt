@@ -1,0 +1,10 @@
+Cher(e) {{ company_name }},
+
+Je suis très intéressé(e) par le poste de {{ job_title }} basé à {{ location }}. Mon expérience en développement logiciel et ma passion pour la création me rendent particulièrement apte à contribuer à vos projets.
+
+[Ajoutez ici d'autres détails personnalisés.]
+
+Dans l'attente d'une réponse positive, je reste à votre disposition pour un entretien.
+
+Cordialement,
+[Votre Nom]
