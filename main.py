@@ -25,4 +25,4 @@ def main():
         apply_to_job(job, cv_path="generated_cv.pdf", cover_letter=None)
 
 if __name__ == "__main__":
-    main()
+    app.run(debug=True)

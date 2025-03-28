@@ -1,0 +1,137 @@
+{
+    "cv1": {
+        "title": "Développeur Full Stack",
+        "skills": ["Python", "JavaScript", "HTML/CSS", "React", "Node.js"],
+        "experience": [
+            {
+                "title": "Développeur Full Stack",
+                "company": "Company A",
+                "dates": "2020-2022",
+                "location": "Paris",
+                "details": ["Développement d'applications web"]
+            }
+        ],
+        "education": [
+            {
+                "degree": "Bac+5",
+                "school": "Université de Paris",
+                "dates": "2015-2020"
+            }
+        ],
+        "hobbies": ["Lecture", "Sport"],
+        "projects": [
+            {
+                "name": "Projet Web",
+                "description": "Développement d'un site web avec React"
+            }
+        ]
+    },
+    "cv2": {
+        "title": "Développeur Backend",
+        "skills": ["Python", "Django", "PostgreSQL", "API REST"],
+        "experience": [
+            {
+                "title": "Développeur Backend",
+                "company": "Company B",
+                "dates": "2018-2020",
+                "location": "Lyon",
+                "details": ["Développement d'APIs"]
+            }
+        ],
+        "education": [
+            {
+                "degree": "Bac+3",
+                "school": "Université de Lyon",
+                "dates": "2015-2018"
+            }
+        ],
+        "hobbies": ["Photographie", "Voyage"],
+        "projects": [
+            {
+                "name": "Projet API",
+                "description": "Création d'une API avec Django"
+            }
+        ]
+    },
+    "cv3": {
+        "title": "Développeur Frontend",
+        "skills": ["HTML/CSS", "JavaScript", "React", "Angular"],
+        "experience": [
+            {
+                "title": "Développeur Frontend",
+                "company": "Company C",
+                "dates": "2019-2021",
+                "location": "Paris",
+                "details": ["Développement de sites web"]
+            }
+        ],
+        "education": [
+            {
+                "degree": "Bac+3",
+                "school": "Université de Paris",
+                "dates": "2016-2019"
+            }
+        ],
+        "hobbies": ["Lecture", "Sport"],
+        "projects": [
+            {
+                "name": "Projet Frontend",
+                "description": "Création d'un site web avec Angular"
+            }
+        ]
+    },
+    "cv4": {
+        "title": "Data Scientist",
+        "skills": ["Python", "R", "Machine Learning", "TensorFlow"],
+        "experience": [
+            {
+                "title": "Data Scientist",
+                "company": "Company D",
+                "dates": "2020-2022",
+                "location": "Paris",
+                "details": ["Analyse de données"]
+            }
+        ],
+        "education": [
+            {
+                "degree": "Bac+5",
+                "school": "Université de Paris",
+                "dates": "2015-2020"
+            }
+        ],
+        "hobbies": ["Photographie", "Voyage"],
+        "projects": [
+            {
+                "name": "Projet Data Science",
+                "description": "Analyse de données avec TensorFlow"
+            }
+        ]
+    },
+    "cv5": {
+        "title": "DevOps Engineer",
+        "skills": ["Docker", "Kubernetes", "AWS", "CI/CD"],
+        "experience": [
+            {
+                "title": "DevOps Engineer",
+                "company": "Company E",
+                "dates": "2019-2021",
+                "location": "Lyon",
+                "details": ["Déploiement d'applications"]
+            }
+        ],
+        "education": [
+            {
+                "degree": "Bac+3",
+                "school": "Université de Lyon",
+                "dates": "2016-2019"
+            }
+        ],
+        "hobbies": ["Lecture", "Sport"],
+        "projects": [
+            {
+                "name": "Projet DevOps",
+                "description": "Déploiement avec Kubernetes"
+            }
+        ]
+    }
+}
