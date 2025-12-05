@@ -1,0 +1,45 @@
+# Base de données
+*.db
+*.sqlite
+*.sqlite3
+
+# CVs générés
+cvs/
+*.pdf
+
+# Fichiers Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Environnements virtuels
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Fichiers de configuration sensibles (personas avec mots de passe)
+# Décommentez si vous ne voulez pas committer personas.json
+# personas.json
+
+# Logs
+*.log
+
+# Fichiers temporaires
+*.tmp
+*.temp
+.DS_Store
+
+# ChromeDriver
+chromedriver
+chromedriver.exe
+
