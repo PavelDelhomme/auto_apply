@@ -3,16 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <title>CV - {{ name }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+        }
+        .photo {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 30px;
+            border: 3px solid #333;
+        }
+        .header-info {
+            flex: 1;
+        }
+        h1 {
+            margin: 0;
+            color: #333;
+        }
+        h2 {
+            margin: 5px 0;
+            color: #666;
+        }
+    </style>
 </head>
 <body>
-    <h1>{{ name }}</h1>
-    <h2>{{ title }}</h2>
+    <div class="header">
+        {% if photo_path %}
+        <img src="{{ photo_path }}" alt="Photo de {{ name }}" class="photo">
+        {% endif %}
+        <div class="header-info">
+            <h1>{{ name }}</h1>
+            {% if title %}
+            <h2>{{ title }}</h2>
+            {% endif %}
+        </div>
+    </div>
     
     <h3>Contact</h3>
     <ul>
+        {% if email %}
+        <li>Email : {{ email }}</li>
+        {% endif %}
+        {% if contact and contact.email %}
         <li>Email : {{ contact.email }}</li>
+        {% endif %}
+        {% if contact and contact.phone %}
         <li>Téléphone : {{ contact.phone }}</li>
+        {% endif %}
+        {% if contact and contact.linkedin %}
         <li>LinkedIn : <a href="{{ contact.linkedin }}">{{ contact.linkedin }}</a></li>
+        {% endif %}
     </ul>
 
     <h3>Compétences</h3>

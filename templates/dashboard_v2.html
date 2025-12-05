@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Apply - Dashboard Complet</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --bg-card: white;
+            --text-primary: #333;
+            --text-secondary: #666;
+            --text-title: #667eea;
+            --border-color: #e5e7eb;
+            --shadow: 0 4px 6px rgba(0,0,0,0.1);
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+        }
+        
+        [data-theme="dark"] {
+            --bg-primary: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            --bg-card: #1e293b;
+            --text-primary: #e5e7eb;
+            --text-secondary: #94a3b8;
+            --text-title: #818cf8;
+            --border-color: #334155;
+            --shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--text-primary);
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .header-left h1 {
+            color: var(--text-title);
+            margin-bottom: 10px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-indicator.active {
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+        }
+        
+        .status-indicator.inactive {
+            background: var(--error);
+        }
+        
+        .theme-toggle {
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 50px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 1.2em;
+            transition: all 0.3s ease;
+            color: var(--text-primary);
+        }
+        
+        .theme-toggle:hover {
+            transform: scale(1.05);
+            box-shadow: var(--shadow);
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: var(--bg-card);
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            background: var(--text-title);
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            transition: background 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card h2 {
+            color: var(--text-title);
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: var(--text-primary);
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid var(--border-color);
+            border-radius: 5px;
+            font-size: 1em;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--text-title);
+        }
+        
+        .personas-selector {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 2px solid var(--border-color);
+            border-radius: 5px;
+            padding: 10px;
+            background: var(--bg-card);
+        }
+        
+        .persona-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+            transition: background 0.2s ease;
+        }
+        
+        .persona-item:hover {
+            background: var(--border-color);
+        }
+        
+        .persona-item input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        
+        .persona-item label {
+            flex: 1;
+            cursor: pointer;
+            margin: 0;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .btn-primary {
+            background: var(--text-title);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: var(--error);
+            color: white;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .logs-container {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            padding: 20px;
+            border-radius: 10px;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            border: 1px solid var(--border-color);
+        }
+        
+        [data-theme="dark"] .logs-container {
+            background: #0f172a;
+        }
+        
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .log-timestamp {
+            color: var(--text-secondary);
+            margin-right: 10px;
+        }
+        
+        .log-level {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        
+        .log-level.info { background: var(--info); color: white; }
+        .log-level.success { background: var(--success); color: white; }
+        .log-level.warning { background: var(--warning); color: white; }
+        .log-level.error { background: var(--error); color: white; }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: var(--border-color);
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--text-title) 0%, #764ba2 100%);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        .results-table th,
+        .results-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .results-table th {
+            background: var(--text-title);
+            color: white;
+            font-weight: 600;
+        }
+        
+        .results-table tr:hover {
+            background: var(--border-color);
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+        
+        .badge-success {
+            background: var(--success);
+            color: white;
+        }
+        
+        .badge-error {
+            background: var(--error);
+            color: white;
+        }
+        
+        .badge-warning {
+            background: var(--warning);
+            color: white;
+        }
+        
+        .collapse {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .collapse.show {
+            max-height: 1000px;
+        }
+        
+        .advanced-settings {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid var(--border-color);
+        }
+        
+        .settings-toggle {
+            background: transparent;
+            border: none;
+            color: var(--text-title);
+            cursor: pointer;
+            font-size: 0.9em;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <h1>🚀 Auto Apply - Dashboard Complet</h1>
+                <p>
+                    <span class="status-indicator" id="statusIndicator"></span>
+                    <span id="statusText">Connexion...</span>
+                </p>
+            </div>
+            <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Changer de thème">
+                🌙
+            </button>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+            <button class="tab" onclick="switchTab('personas')">👥 Personas</button>
+            <button class="tab" onclick="switchTab('jobs')">💼 Offres</button>
+            <button class="tab" onclick="switchTab('results')">📈 Résultats</button>
+            <button class="tab" onclick="switchTab('settings')">⚙️ Paramètres</button>
+        </div>
+        
+        <!-- Tab Dashboard -->
+        <div id="tab-dashboard" class="tab-content active">
+            <div class="grid">
+                <div class="card">
+                    <h2>📊 Statistiques Globales</h2>
+                    <div class="stat-value" id="totalJobs">0</div>
+                    <div class="stat-label">Offres trouvées</div>
+                    <div class="stat-value" id="totalApplications">0</div>
+                    <div class="stat-label">Candidatures totales</div>
+                    <div class="stat-value" id="sentApplications">0</div>
+                    <div class="stat-label">✅ Envoyées</div>
+                    <div class="stat-value" id="failedApplications">0</div>
+                    <div class="stat-label">❌ Échouées</div>
+                </div>
+                
+                <div class="card">
+                    <h2>⚡ Session Actuelle</h2>
+                    <div class="stat-value" id="jobsFound">0</div>
+                    <div class="stat-label">Offres trouvées</div>
+                    <div class="stat-value" id="applicationsSent">0</div>
+                    <div class="stat-label">Candidatures envoyées</div>
+                    <div class="stat-value" id="applicationsFailed">0</div>
+                    <div class="stat-label">Candidatures échouées</div>
+                </div>
+                
+                <div class="card">
+                    <h2>🎯 Progression</h2>
+                    <div id="progressContainer">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill" style="width: 0%">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>🎮 Contrôles Rapides</h2>
+                <div class="btn-group">
+                    <button class="btn btn-success" onclick="generateCVs()">📄 Générer les CVs</button>
+                    <button class="btn btn-primary" onclick="scrapeJobs()">🔍 Rechercher des offres</button>
+                    <button class="btn btn-primary" onclick="showAutoApplyModal()">🚀 Lancer Auto Apply</button>
+                    <button class="btn btn-danger" onclick="stopAutoApply()" id="stopBtn" disabled>⏹️ Arrêter</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tab Personas -->
+        <div id="tab-personas" class="tab-content">
+            <div class="card">
+                <h2>👥 Sélection des Personas</h2>
+                <p style="margin-bottom: 15px; color: var(--text-secondary);">
+                    Sélectionnez les personas qui participeront à la candidature automatique
+                </p>
+                <div class="form-group">
+                    <button class="btn btn-primary" onclick="selectAllPersonas()">Sélectionner tout</button>
+                    <button class="btn" onclick="deselectAllPersonas()">Désélectionner tout</button>
+                    <span id="selectedCount" style="margin-left: 15px; color: var(--text-secondary);">0 sélectionné(s)</span>
+                </div>
+                <div class="personas-selector" id="personasList">
+                    <p>Chargement des personas...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tab Jobs -->
+        <div id="tab-jobs" class="tab-content">
+            <div class="card">
+                <h2>💼 Offres d'Emploi</h2>
+                <div class="form-group">
+                    <label>Recherche</label>
+                    <input type="text" id="searchQuery" value="développeur python" placeholder="Mots-clés">
+                </div>
+                <div class="form-group">
+                    <label>Localisation</label>
+                    <input type="text" id="searchLocation" value="Rennes" placeholder="Ville ou région">
+                </div>
+                <button class="btn btn-primary" onclick="scrapeJobs()">🔍 Rechercher</button>
+                <div id="jobsList" style="margin-top: 20px;">
+                    <p>Aucune offre chargée</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tab Results -->
+        <div id="tab-results" class="tab-content">
+            <div class="card">
+                <h2>📈 Résultats Détaillés</h2>
+                <div id="resultsContent">
+                    <p>Chargement des résultats...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tab Settings -->
+        <div id="tab-settings" class="tab-content">
+            <div class="card">
+                <h2>⚙️ Paramètres Avancés</h2>
+                
+                <h3 style="margin-top: 20px; color: var(--text-title);">Recherche d'emploi</h3>
+                <div class="form-group">
+                    <label>Mots-clés dans le titre (séparés par des virgules)</label>
+                    <input type="text" id="titleKeywords" value="Python, Développeur, Developer" placeholder="Python, Développeur">
+                </div>
+                <div class="form-group">
+                    <label>Mots-clés dans la localisation</label>
+                    <input type="text" id="locationKeywords" value="Rennes, Bretagne, Remote" placeholder="Rennes, Remote">
+                </div>
+                <div class="form-group">
+                    <label>Mots-clés à exclure</label>
+                    <input type="text" id="excludeKeywords" value="Senior, Lead, Manager" placeholder="Senior, Lead">
+                </div>
+                
+                <h3 style="margin-top: 20px; color: var(--text-title);">Candidatures</h3>
+                <div class="form-group">
+                    <label>Max candidatures par persona</label>
+                    <input type="number" id="maxPerPersona" value="3" min="1" max="20">
+                </div>
+                <div class="form-group">
+                    <label>Délai entre candidatures (secondes)</label>
+                    <input type="number" id="delayMin" value="5" min="1" placeholder="Min"> - 
+                    <input type="number" id="delayMax" value="10" min="1" placeholder="Max">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="useCoverLetter" checked>
+                        Utiliser les lettres de motivation
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="headlessMode" checked>
+                        Mode headless (arrière-plan)
+                    </label>
+                </div>
+                
+                <div class="btn-group" style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="saveSettings()">💾 Sauvegarder</button>
+                    <button class="btn" onclick="loadSettings()">🔄 Charger</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal Auto Apply -->
+        <div id="autoApplyModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+            <div style="background: var(--bg-card); padding: 30px; border-radius: 10px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+                <h2 style="margin-bottom: 20px; color: var(--text-title);">🚀 Lancer la Candidature Automatique</h2>
+                
+                <div class="form-group">
+                    <label>Recherche d'emploi</label>
+                    <input type="text" id="modalQuery" value="développeur python" placeholder="Mots-clés">
+                </div>
+                
+                <div class="form-group">
+                    <label>Localisation</label>
+                    <input type="text" id="modalLocation" value="Rennes" placeholder="Ville ou région">
+                </div>
+                
+                <div class="form-group">
+                    <label>Personas sélectionnés</label>
+                    <div id="modalPersonasList" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); padding: 10px; border-radius: 5px;">
+                        Chargement...
+                    </div>
+                </div>
+                
+                <div class="btn-group" style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="startAutoApplyFromModal()">🚀 Démarrer</button>
+                    <button class="btn" onclick="closeAutoApplyModal()">Annuler</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Logs -->
+        <div class="card">
+            <h2>📋 Logs en temps réel</h2>
+            <div class="logs-container" id="logsContainer">
+                <div class="log-entry">
+                    <span class="log-timestamp">--:--:--</span>
+                    <span class="log-level info">INFO</span>
+                    <span>En attente de connexion...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const socket = io();
+        let isRunning = false;
+        let allPersonas = {};
+        let selectedPersonas = new Set();
+        
+        // Gestion du thème
+        function getTheme() {
+            return localStorage.getItem('theme') || 'light';
+        }
+        
+        function setTheme(theme) {
+            localStorage.setItem('theme', theme);
+            document.documentElement.setAttribute('data-theme', theme);
+            document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+        
+        function toggleTheme() {
+            const currentTheme = getTheme();
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            setTheme(newTheme);
+        }
+        
+        // Gestion des onglets
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            
+            if (tabName === 'personas') {
+                loadPersonas();
+            } else if (tabName === 'results') {
+                loadResults();
+            } else if (tabName === 'jobs') {
+                loadJobs();
+            }
+        }
+        
+        // WebSocket events
+        socket.on('connect', () => {
+            addLog('Connecté au serveur', 'success');
+            updateStatus();
+            loadPersonas();
+        });
+        
+        socket.on('log', (data) => {
+            addLog(data.message, data.level, data.timestamp);
+        });
+        
+        socket.on('stats_update', (stats) => {
+            updateStats(stats);
+        });
+        
+        socket.on('status_update', (data) => {
+            isRunning = data.is_running;
+            updateStatusUI(data.step, data.is_running);
+        });
+        
+        socket.on('application_start', (data) => {
+            addLog(`${data.persona} postule pour: ${data.job} chez ${data.company}`, 'info');
+        });
+        
+        socket.on('application_success', (data) => {
+            addLog(`✅ ${data.persona}: Candidature envoyée pour ${data.job}`, 'success');
+        });
+        
+        socket.on('application_failed', (data) => {
+            addLog(`❌ ${data.persona}: Échec pour ${data.job}`, 'error');
+        });
+        
+        // Fonctions utilitaires
+        function addLog(message, level = 'info', timestamp = null) {
+            const container = document.getElementById('logsContainer');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const ts = timestamp || new Date().toLocaleTimeString('fr-FR');
+            entry.innerHTML = `
+                <span class="log-timestamp">${ts}</span>
+                <span class="log-level ${level}">${level.toUpperCase()}</span>
+                <span>${message}</span>
+            `;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function updateStats(stats) {
+            if (stats) {
+                document.getElementById('totalJobs').textContent = stats.total_jobs || 0;
+                document.getElementById('totalApplications').textContent = stats.total_applications || 0;
+                document.getElementById('sentApplications').textContent = stats.sent_applications || 0;
+                document.getElementById('failedApplications').textContent = stats.failed_applications || 0;
+            }
+        }
+        
+        function updateStatusUI(step, running) {
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            const stopBtn = document.getElementById('stopBtn');
+            
+            if (running) {
+                indicator.className = 'status-indicator active';
+                const stepNames = {
+                    'initialisation': 'Initialisation...',
+                    'generating_cvs': 'Génération des CVs...',
+                    'scraping': 'Recherche d\'offres...',
+                    'applying': 'Envoi des candidatures...',
+                    'idle': 'En cours...'
+                };
+                statusText.textContent = stepNames[step] || 'En cours...';
+                stopBtn.disabled = false;
+            } else {
+                indicator.className = 'status-indicator inactive';
+                statusText.textContent = step === 'ready' ? 'Prêt' : 'Prêt';
+                stopBtn.disabled = true;
+            }
+        }
+        
+        async function updateStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                isRunning = data.is_running;
+                document.getElementById('jobsFound').textContent = data.jobs_found || 0;
+                document.getElementById('applicationsSent').textContent = data.applications_sent || 0;
+                document.getElementById('applicationsFailed').textContent = data.applications_failed || 0;
+                updateStatusUI(data.current_step, data.is_running);
+            } catch (error) {
+                console.error('Erreur:', error);
+            }
+        }
+        
+        // Gestion des personas
+        async function loadPersonas() {
+            try {
+                const response = await fetch('/api/personas');
+                allPersonas = await response.json();
+                renderPersonasList();
+            } catch (error) {
+                addLog(`Erreur chargement personas: ${error.message}`, 'error');
+            }
+        }
+        
+        function renderPersonasList() {
+            const container = document.getElementById('personasList');
+            const modalContainer = document.getElementById('modalPersonasList');
+            
+            let html = '';
+            let modalHtml = '';
+            
+            for (const [key, persona] of Object.entries(allPersonas)) {
+                const isSelected = selectedPersonas.has(persona.email);
+                html += `
+                    <div class="persona-item">
+                        <input type="checkbox" id="persona-${key}" ${isSelected ? 'checked' : ''} 
+                               onchange="togglePersona('${persona.email}', ${isSelected})">
+                        <label for="persona-${key}">
+                            <strong>${persona.name}</strong> (${persona.email})
+                            ${persona.alias ? '<span style="color: var(--text-secondary);"> - Alias</span>' : ''}
+                        </label>
+                    </div>
+                `;
+                
+                if (isSelected) {
+                    modalHtml += `<div>✅ ${persona.name} (${persona.email})</div>`;
+                }
+            }
+            
+            container.innerHTML = html || '<p>Aucun persona trouvé</p>';
+            modalContainer.innerHTML = modalHtml || '<p>Aucun persona sélectionné</p>';
+            updateSelectedCount();
+        }
+        
+        function togglePersona(email, wasSelected) {
+            if (wasSelected) {
+                selectedPersonas.delete(email);
+            } else {
+                selectedPersonas.add(email);
+            }
+            renderPersonasList();
+        }
+        
+        function selectAllPersonas() {
+            Object.values(allPersonas).forEach(p => selectedPersonas.add(p.email));
+            renderPersonasList();
+        }
+        
+        function deselectAllPersonas() {
+            selectedPersonas.clear();
+            renderPersonasList();
+        }
+        
+        function updateSelectedCount() {
+            document.getElementById('selectedCount').textContent = `${selectedPersonas.size} sélectionné(s)`;
+        }
+        
+        // Actions
+        async function generateCVs() {
+            try {
+                const response = await fetch('/api/generate_cvs', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    addLog(`${data.count} CVs générés avec succès`, 'success');
+                }
+            } catch (error) {
+                addLog(`Erreur: ${error.message}`, 'error');
+            }
+        }
+        
+        async function scrapeJobs() {
+            const query = document.getElementById('searchQuery').value;
+            const location = document.getElementById('searchLocation').value;
+            
+            try {
+                const response = await fetch('/api/scrape_jobs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, location, max_results: 50 })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addLog('Recherche d\'offres démarrée...', 'info');
+                }
+            } catch (error) {
+                addLog(`Erreur: ${error.message}`, 'error');
+            }
+        }
+        
+        function showAutoApplyModal() {
+            if (selectedPersonas.size === 0) {
+                alert('Veuillez sélectionner au moins un persona dans l\'onglet Personas');
+                switchTab('personas');
+                return;
+            }
+            document.getElementById('autoApplyModal').style.display = 'flex';
+            renderPersonasList();
+        }
+        
+        function closeAutoApplyModal() {
+            document.getElementById('autoApplyModal').style.display = 'none';
+        }
+        
+        async function startAutoApplyFromModal() {
+            const query = document.getElementById('modalQuery').value;
+            const location = document.getElementById('modalLocation').value;
+            const titleKeywords = document.getElementById('titleKeywords').value.split(',').map(s => s.trim());
+            const locationKeywords = document.getElementById('locationKeywords').value.split(',').map(s => s.trim());
+            const excludeKeywords = document.getElementById('excludeKeywords').value.split(',').map(s => s.trim());
+            const maxPerPersona = parseInt(document.getElementById('maxPerPersona').value);
+            const delayMin = parseInt(document.getElementById('delayMin').value);
+            const delayMax = parseInt(document.getElementById('delayMax').value);
+            const useCoverLetter = document.getElementById('useCoverLetter').checked;
+            const headless = document.getElementById('headlessMode').checked;
+            
+            const selectedPersonasList = Array.from(selectedPersonas);
+            
+            try {
+                const response = await fetch('/api/start_auto_apply', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query,
+                        location,
+                        title_keywords: titleKeywords,
+                        location_keywords: locationKeywords,
+                        exclude_keywords: excludeKeywords,
+                        max_per_persona: maxPerPersona,
+                        delay_min: delayMin,
+                        delay_max: delayMax,
+                        use_cover_letter: useCoverLetter,
+                        headless: headless,
+                        selected_personas: selectedPersonasList
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addLog('Processus de candidature automatique démarré', 'success');
+                    closeAutoApplyModal();
+                } else {
+                    addLog(`Erreur: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                addLog(`Erreur: ${error.message}`, 'error');
+            }
+        }
+        
+        async function stopAutoApply() {
+            try {
+                const response = await fetch('/api/stop_auto_apply', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    addLog('Arrêt demandé...', 'warning');
+                }
+            } catch (error) {
+                addLog(`Erreur: ${error.message}`, 'error');
+            }
+        }
+        
+        async function loadJobs() {
+            try {
+                const response = await fetch('/api/jobs');
+                const jobs = await response.json();
+                const container = document.getElementById('jobsList');
+                
+                if (jobs.length === 0) {
+                    container.innerHTML = '<p>Aucune offre disponible</p>';
+                    return;
+                }
+                
+                let html = `<table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Titre</th>
+                            <th>Entreprise</th>
+                            <th>Localisation</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+                
+                jobs.slice(0, 50).forEach(job => {
+                    html += `
+                        <tr>
+                            <td>${job.title || 'N/A'}</td>
+                            <td>${job.company || 'N/A'}</td>
+                            <td>${job.location || 'N/A'}</td>
+                            <td>
+                                ${job.url ? `<a href="${job.url}" target="_blank">Voir</a>` : ''}
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (error) {
+                addLog(`Erreur chargement offres: ${error.message}`, 'error');
+            }
+        }
+        
+        async function loadResults() {
+            try {
+                const response = await fetch('/api/stats');
+                const stats = await response.json();
+                const container = document.getElementById('resultsContent');
+                
+                let html = `
+                    <h3>Statistiques par Persona</h3>
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>Persona</th>
+                                <th>Total</th>
+                                <th>Envoyées</th>
+                                <th>Échouées</th>
+                                <th>En attente</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                if (stats.persona_stats && Object.keys(stats.persona_stats).length > 0) {
+                    for (const [persona, data] of Object.entries(stats.persona_stats)) {
+                        const total = (data.sent || 0) + (data.failed || 0) + (data.pending || 0);
+                        html += `
+                            <tr>
+                                <td>${persona}</td>
+                                <td>${total}</td>
+                                <td><span class="badge badge-success">${data.sent || 0}</span></td>
+                                <td><span class="badge badge-error">${data.failed || 0}</span></td>
+                                <td><span class="badge badge-warning">${data.pending || 0}</span></td>
+                            </tr>
+                        `;
+                    }
+                } else {
+                    html += '<tr><td colspan="5">Aucune donnée disponible</td></tr>';
+                }
+                
+                html += '</tbody></table>';
+                
+                if (stats.top_jobs && stats.top_jobs.length > 0) {
+                    html += `
+                        <h3 style="margin-top: 30px;">Top Offres Candidatées</h3>
+                        <table class="results-table">
+                            <thead>
+                                <tr>
+                                    <th>Titre</th>
+                                    <th>Entreprise</th>
+                                    <th>Candidatures</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    stats.top_jobs.forEach(job => {
+                        html += `
+                            <tr>
+                                <td>${job.title}</td>
+                                <td>${job.company}</td>
+                                <td>${job.count}</td>
+                            </tr>
+                        `;
+                    });
+                    html += '</tbody></table>';
+                }
+                
+                container.innerHTML = html;
+            } catch (error) {
+                addLog(`Erreur chargement résultats: ${error.message}`, 'error');
+            }
+        }
+        
+        function saveSettings() {
+            const settings = {
+                titleKeywords: document.getElementById('titleKeywords').value,
+                locationKeywords: document.getElementById('locationKeywords').value,
+                excludeKeywords: document.getElementById('excludeKeywords').value,
+                maxPerPersona: document.getElementById('maxPerPersona').value,
+                delayMin: document.getElementById('delayMin').value,
+                delayMax: document.getElementById('delayMax').value,
+                useCoverLetter: document.getElementById('useCoverLetter').checked,
+                headlessMode: document.getElementById('headlessMode').checked
+            };
+            localStorage.setItem('autoApplySettings', JSON.stringify(settings));
+            addLog('Paramètres sauvegardés', 'success');
+        }
+        
+        function loadSettings() {
+            const saved = localStorage.getItem('autoApplySettings');
+            if (saved) {
+                const settings = JSON.parse(saved);
+                document.getElementById('titleKeywords').value = settings.titleKeywords || '';
+                document.getElementById('locationKeywords').value = settings.locationKeywords || '';
+                document.getElementById('excludeKeywords').value = settings.excludeKeywords || '';
+                document.getElementById('maxPerPersona').value = settings.maxPerPersona || 3;
+                document.getElementById('delayMin').value = settings.delayMin || 5;
+                document.getElementById('delayMax').value = settings.delayMax || 10;
+                document.getElementById('useCoverLetter').checked = settings.useCoverLetter !== false;
+                document.getElementById('headlessMode').checked = settings.headlessMode !== false;
+                addLog('Paramètres chargés', 'success');
+            }
+        }
+        
+        // Initialisation
+        setTheme(getTheme());
+        setInterval(updateStatus, 5000);
+        setInterval(loadInitialStats, 5000);
+        updateStatus();
+        loadSettings();
+        
+        async function loadInitialStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const stats = await response.json();
+                updateStats(stats);
+            } catch (error) {
+                console.error('Erreur:', error);
+            }
+        }
+    </script>
+</body>
+</html>
+

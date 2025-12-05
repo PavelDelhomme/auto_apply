@@ -1,10 +1,13 @@
-Cher(e) {{ company_name }},
+Objet : Candidature pour le poste de {{ job_title }}
 
-Je suis très intéressé(e) par le poste de {{ job_title }} basé à {{ location }}. Mon expérience en développement logiciel et ma passion pour la création me rendent particulièrement apte à contribuer à vos projets.
+Madame, Monsieur,
 
-[Ajoutez ici d'autres détails personnalisés.]
+Je me permets de vous adresser ma candidature pour le poste de {{ job_title }} au sein de {{ company_name }}, situé à {{ location }}.
 
-Dans l'attente d'une réponse positive, je reste à votre disposition pour un entretien.
+Mon parcours et mes compétences correspondent parfaitement aux exigences de ce poste. Je suis particulièrement motivé(e) à rejoindre votre équipe et à contribuer au développement de vos projets.
 
-Cordialement,
-[Votre Nom]
+Je serais ravi(e) de pouvoir échanger avec vous lors d'un entretien pour vous présenter plus en détail mon profil et discuter de la manière dont je pourrais apporter ma contribution à votre entreprise.
+
+Dans l'attente de votre retour, je reste à votre entière disposition pour tout complément d'information.
+
+Je vous prie d'agréer, Madame, Monsieur, l'expression de mes salutations distinguées.
