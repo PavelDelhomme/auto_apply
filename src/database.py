@@ -52,7 +52,7 @@ def create_database():
                   cv_data TEXT,
                   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                   is_default INTEGER DEFAULT 0,
-                  UNIQUE(persona_email, search_key, cv_id))
+                  UNIQUE(persona_email, search_key, cv_id))''')
     
     # Table pour l'historique des recherches d'offres
     c.execute('''CREATE TABLE IF NOT EXISTS job_searches
