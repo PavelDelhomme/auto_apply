@@ -9,7 +9,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from src.app import app
-from database import create_database, insert_email, get_persona_emails, get_db_path
+from src.database import create_database, insert_email, get_persona_emails, get_db_path
 import sqlite3
 
 @pytest.fixture
