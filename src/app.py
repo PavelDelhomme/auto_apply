@@ -1534,6 +1534,31 @@ def api_historical_stats():
         logger.error(f"Erreur lors de la récupération des stats historiques: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/job-searches')
+def api_job_searches():
+    """API pour récupérer l'historique des recherches d'offres."""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        offset = (page - 1) * per_page
+        
+        searches = get_job_searches(limit=per_page, offset=offset)
+        total = get_job_search_count()
+        
+        return jsonify({
+            'success': True,
+            'searches': searches,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total,
+                'pages': (total + per_page - 1) // per_page
+            }
+        })
+    except Exception as e:
+        logger.error(f"Erreur récupération historique recherches: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/logs')
 def api_logs():
     """Récupère les logs depuis la base de données."""
