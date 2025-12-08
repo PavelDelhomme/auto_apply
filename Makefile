@@ -264,10 +264,22 @@ test-local: ## Lance les tests localement (sans Docker)
 
 test-coverage: ## Affiche le rapport de couverture détaillé
 	@printf "$(GREEN)📊 Génération du rapport de couverture...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install --upgrade pip --quiet 2>/dev/null || true
 	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install -q pytest-cov 2>/dev/null || true
 	@docker-compose -f $(COMPOSE_FILE) exec -e PYTHONPATH=/app $(SERVICE_NAME) python -m pytest tests/ --cov=src --cov-config=.coveragerc --cov-report=html:/tmp/coverage_html --cov-report=term-missing
 	@printf "$(GREEN)✅ Rapport généré dans /tmp/coverage_html/index.html (dans le conteneur)$(NC)\n"
 	@printf "$(YELLOW)💡 Pour voir le rapport: make shell puis ouvrir /tmp/coverage_html/index.html$(NC)\n"
+	@printf "$(YELLOW)💡 Ou copier depuis le conteneur: docker cp \$$(docker-compose ps -q auto-apply):/tmp/coverage_html ./coverage_html$(NC)\n"
+
+test-reports: ## Copie les rapports de test depuis le conteneur vers le répertoire local
+	@printf "$(GREEN)📥 Copie des rapports de test depuis le conteneur...$(NC)\n"
+	@mkdir -p ./test_reports/coverage_html ./test_reports/xml
+	@docker cp $$(docker-compose -f $(COMPOSE_FILE) ps -q $(SERVICE_NAME)):/tmp/coverage_html ./test_reports/ 2>/dev/null || printf "$(YELLOW)⚠️  Rapport HTML non trouvé$(NC)\n"
+	@docker cp $$(docker-compose -f $(COMPOSE_FILE) ps -q $(SERVICE_NAME)):/tmp/coverage.xml ./test_reports/xml/ 2>/dev/null || printf "$(YELLOW)⚠️  Rapport XML de couverture non trouvé$(NC)\n"
+	@docker cp $$(docker-compose -f $(COMPOSE_FILE) ps -q $(SERVICE_NAME)):/tmp/test-results.xml ./test_reports/xml/ 2>/dev/null || printf "$(YELLOW)⚠️  Rapport JUnit non trouvé$(NC)\n"
+	@docker cp $$(docker-compose -f $(COMPOSE_FILE) ps -q $(SERVICE_NAME)):/tmp/test-results-*.xml ./test_reports/xml/ 2>/dev/null || true
+	@printf "$(GREEN)✅ Rapports copiés dans ./test_reports/$(NC)\n"
+	@printf "$(YELLOW)💡 Ouvrez ./test_reports/coverage_html/index.html dans votre navigateur$(NC)\n"
 
 install-deps: ## Installe les dépendances localement (sans Docker)
 	@printf "$(GREEN)📦 Installation des dépendances Python...$(NC)\n"
