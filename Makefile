@@ -204,7 +204,7 @@ test: ## Lance la suite complète de tests (connexion, unitaires, intégration, 
 	fi
 	@printf "\n"
 	@printf "$(YELLOW)🎯 Étape 5/5: Tests FAB et rapport de couverture...$(NC)\n"
-	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/test_fab_functionality.py -v --tb=short --cov=src --cov-report=term-missing --cov-report=html:/tmp/coverage_html --junitxml=/tmp/test-results-fab.xml || TEST_FAB_FAILED=1; \
+	@docker-compose -f $(COMPOSE_FILE) exec -e PYTHONPATH=/app $(SERVICE_NAME) python -m pytest tests/test_fab_functionality.py -v --tb=short --cov=src --cov-config=.coveragerc --cov-report=term-missing --cov-report=html:/tmp/coverage_html --junitxml=/tmp/test-results-fab.xml || TEST_FAB_FAILED=1; \
 	if [ -z "$$TEST_FAB_FAILED" ]; then \
 		printf "$(GREEN)✅ Tests FAB réussis$(NC)\n"; \
 	else \
