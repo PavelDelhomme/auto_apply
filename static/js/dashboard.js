@@ -648,6 +648,10 @@ async function stopAutoApply() {
     }
 }
 
+// Variables pour le test de candidature
+let selectedTestJob = null;
+let allJobsForTest = [];
+
 // Modal Test Application
 function showTestApplicationModal() {
     const modal = document.getElementById('testApplicationModal');
@@ -655,6 +659,12 @@ function showTestApplicationModal() {
         modal.classList.add('active');
         // Charger les personas dans le select
         loadTestPersonas();
+        // Charger les offres existantes
+        loadExistingJobsForTest();
+        // Réinitialiser
+        selectedTestJob = null;
+        document.getElementById('testMode').value = 'url';
+        toggleTestMode();
     } else {
         alert('Modal de test de candidature non trouvé. Veuillez recharger la page.');
     }
@@ -664,6 +674,29 @@ function closeTestApplicationModal() {
     const modal = document.getElementById('testApplicationModal');
     if (modal) {
         modal.classList.remove('active');
+    }
+    selectedTestJob = null;
+}
+
+function toggleTestMode() {
+    const mode = document.getElementById('testMode')?.value;
+    const urlSection = document.getElementById('testModeUrl');
+    const searchSection = document.getElementById('testModeSearch');
+    const existingSection = document.getElementById('testModeExisting');
+    
+    // Masquer toutes les sections
+    if (urlSection) urlSection.style.display = 'none';
+    if (searchSection) searchSection.style.display = 'none';
+    if (existingSection) existingSection.style.display = 'none';
+    
+    // Afficher la section correspondante
+    if (mode === 'url' && urlSection) {
+        urlSection.style.display = 'block';
+    } else if (mode === 'search' && searchSection) {
+        searchSection.style.display = 'block';
+    } else if (mode === 'existing' && existingSection) {
+        existingSection.style.display = 'block';
+        loadExistingJobsForTest();
     }
 }
 
@@ -685,16 +718,207 @@ async function loadTestPersonas() {
     }
 }
 
+async function loadExistingJobsForTest() {
+    const container = document.getElementById('testExistingJobsList');
+    if (!container) return;
+    
+    try {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">⏳ Chargement des offres...</p>';
+        
+        const response = await fetch('/api/jobs?limit=100');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const jobs = await response.json();
+        allJobsForTest = Array.isArray(jobs) ? jobs : [];
+        
+        renderExistingJobsForTest();
+    } catch (error) {
+        console.error('Erreur chargement offres:', error);
+        container.innerHTML = `<p style="text-align: center; color: var(--error);">Erreur: ${error.message}</p>`;
+    }
+}
+
+function renderExistingJobsForTest(filter = '') {
+    const container = document.getElementById('testExistingJobsList');
+    if (!container) return;
+    
+    let jobsToShow = allJobsForTest;
+    if (filter) {
+        const filterLower = filter.toLowerCase();
+        jobsToShow = allJobsForTest.filter(job => 
+            (job.title && job.title.toLowerCase().includes(filterLower)) ||
+            (job.company && job.company.toLowerCase().includes(filterLower)) ||
+            (job.location && job.location.toLowerCase().includes(filterLower))
+        );
+    }
+    
+    if (jobsToShow.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Aucune offre trouvée</p>';
+        return;
+    }
+    
+    let html = '';
+    jobsToShow.slice(0, 20).forEach(job => {
+        const isSelected = selectedTestJob && selectedTestJob.id === job.id;
+        html += `
+            <div class="job-item-test" onclick="selectJobForTest(${job.id})" style="
+                padding: 15px;
+                margin-bottom: 10px;
+                border: 2px solid ${isSelected ? 'var(--text-title)' : 'var(--border-color)'};
+                border-radius: 10px;
+                background: ${isSelected ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)' : 'var(--bg-card)'};
+                cursor: pointer;
+                transition: all 0.3s ease;
+            " onmouseenter="this.style.borderColor='var(--text-title)'; this.style.transform='translateX(5px)'" 
+               onmouseleave="if (!${isSelected}) { this.style.borderColor='var(--border-color)'; this.style.transform='translateX(0)' }">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                    <div style="flex: 1;">
+                        <strong style="color: var(--text-primary); font-size: 1.05em; display: block; margin-bottom: 5px;">${job.title || 'Sans titre'}</strong>
+                        <div style="color: var(--text-secondary); font-size: 0.9em;">
+                            <span>🏢 ${job.company || 'N/A'}</span> | 
+                            <span>📍 ${job.location || 'N/A'}</span>
+                        </div>
+                    </div>
+                    ${isSelected ? '<span style="color: var(--success); font-size: 1.5em;">✓</span>' : ''}
+                </div>
+                ${job.url ? `<a href="${job.url}" target="_blank" style="color: var(--text-title); font-size: 0.85em; text-decoration: none;">🔗 Voir l'offre</a>` : ''}
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function filterExistingJobsForTest() {
+    const filter = document.getElementById('testExistingSearch')?.value || '';
+    renderExistingJobsForTest(filter);
+}
+
+function selectJobForTest(jobId) {
+    selectedTestJob = allJobsForTest.find(job => job.id === jobId);
+    renderExistingJobsForTest(document.getElementById('testExistingSearch')?.value || '');
+}
+
+async function searchJobForTest() {
+    const query = document.getElementById('testSearchQuery')?.value;
+    const location = document.getElementById('testSearchLocation')?.value;
+    const platform = document.getElementById('testSearchPlatform')?.value;
+    const resultsContainer = document.getElementById('testSearchResults');
+    
+    if (!query || !location) {
+        alert('Veuillez remplir les mots-clés et la localisation');
+        return;
+    }
+    
+    if (!resultsContainer) return;
+    
+    try {
+        resultsContainer.style.display = 'block';
+        resultsContainer.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">⏳ Recherche en cours...</p>';
+        
+        const response = await fetch('/api/scrape_jobs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                query, 
+                location, 
+                max_results: 10,
+                platform: platform || 'indeed'
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            // Attendre un peu pour que les offres soient enregistrées
+            setTimeout(async () => {
+                const jobsResponse = await fetch('/api/jobs?limit=50');
+                const jobs = await jobsResponse.json();
+                const recentJobs = Array.isArray(jobs) ? jobs.slice(0, 10) : [];
+                
+                if (recentJobs.length === 0) {
+                    resultsContainer.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Aucune offre trouvée. Réessayez dans quelques secondes.</p>';
+                    return;
+                }
+                
+                let html = '<p style="margin-bottom: 10px; font-weight: 600; color: var(--text-title);">Sélectionnez une offre :</p>';
+                recentJobs.forEach(job => {
+                    html += `
+                        <div onclick="selectJobFromSearch(${job.id})" style="
+                            padding: 12px;
+                            margin-bottom: 8px;
+                            border: 2px solid var(--border-color);
+                            border-radius: 8px;
+                            background: var(--bg-card);
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                        " onmouseenter="this.style.borderColor='var(--text-title)'; this.style.transform='translateX(5px)'" 
+                           onmouseleave="this.style.borderColor='var(--border-color)'; this.style.transform='translateX(0)'">
+                            <strong style="color: var(--text-primary);">${job.title || 'Sans titre'}</strong><br>
+                            <small style="color: var(--text-secondary);">${job.company || 'N/A'} - ${job.location || 'N/A'}</small>
+                        </div>
+                    `;
+                });
+                
+                resultsContainer.innerHTML = html;
+            }, 2000);
+        } else {
+            resultsContainer.innerHTML = `<p style="text-align: center; color: var(--error);">Erreur: ${data.error || 'Erreur inconnue'}</p>`;
+        }
+    } catch (error) {
+        resultsContainer.innerHTML = `<p style="text-align: center; color: var(--error);">Erreur: ${error.message}</p>`;
+    }
+}
+
+function selectJobFromSearch(jobId) {
+    selectedTestJob = allJobsForTest.find(job => job.id === jobId);
+    if (!selectedTestJob) {
+        // Charger depuis l'API
+        fetch(`/api/jobs`)
+            .then(r => r.json())
+            .then(jobs => {
+                selectedTestJob = jobs.find(job => job.id === jobId);
+                if (selectedTestJob) {
+                    document.getElementById('testMode').value = 'existing';
+                    toggleTestMode();
+                    loadExistingJobsForTest();
+                }
+            });
+    } else {
+        document.getElementById('testMode').value = 'existing';
+        toggleTestMode();
+        loadExistingJobsForTest();
+    }
+}
+
 async function startTestApplication() {
-    const platform = document.getElementById('testPlatform')?.value;
-    const jobUrl = document.getElementById('testJobUrl')?.value;
+    const mode = document.getElementById('testMode')?.value;
     const personaEmail = document.getElementById('testPersona')?.value;
     const useCoverLetter = document.getElementById('testUseCoverLetter')?.checked;
     const dryRun = document.getElementById('testDryRun')?.checked;
     
-    if (!platform || !jobUrl || !personaEmail) {
-        alert('Veuillez remplir tous les champs');
+    if (!personaEmail) {
+        alert('Veuillez sélectionner un persona');
         return;
+    }
+    
+    let platform = '';
+    let jobUrl = '';
+    
+    if (mode === 'url') {
+        platform = document.getElementById('testPlatform')?.value;
+        jobUrl = document.getElementById('testJobUrl')?.value;
+        
+        if (!platform || !jobUrl) {
+            alert('Veuillez remplir la plateforme et l\'URL');
+            return;
+        }
+    } else if (mode === 'search' || mode === 'existing') {
+        if (!selectedTestJob || !selectedTestJob.url) {
+            alert('Veuillez sélectionner une offre d\'emploi');
+            return;
+        }
+        jobUrl = selectedTestJob.url;
+        platform = selectedTestJob.platform || 'indeed';
     }
     
     try {
