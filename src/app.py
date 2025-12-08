@@ -983,7 +983,7 @@ def api_test_application():
         
         # Récupérer ou générer le CV
         import os
-        from .cv_generator import generate_cv_for_persona, load_cvs
+        from .cv_generator import generate_cv_for_persona
         
         safe_email = persona_email.replace('@', '_at_').replace('.', '_')
         cv_dir = '/app/cvs'

@@ -200,7 +200,7 @@ class TestFABIntegration:
             ('/api/scrape_jobs', 'POST'),
             ('/api/start_auto_apply', 'POST'),
             ('/api/stop_auto_apply', 'POST'),
-            ('/api/test_application', 'POST')
+            ('/api/test-application', 'POST')
         ]
         
         for endpoint, method in endpoints:
