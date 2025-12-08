@@ -5,19 +5,20 @@ import pytest
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+# Ajouter le répertoire racine au path pour les imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 def test_job_filter_imports():
     """Test que le module peut être importé."""
     try:
-        from job_filter import filter_jobs
+        from src.job_filter import filter_jobs
         assert True
     except ImportError as e:
         pytest.skip(f"Module job_filter non disponible: {e}")
 
 def test_filter_jobs_function_exists():
     """Test que la fonction filter_jobs existe."""
-    from job_filter import filter_jobs
+    from src.job_filter import filter_jobs
     assert callable(filter_jobs)
 
 def test_filter_jobs_with_keywords(temp_db):
@@ -25,11 +26,13 @@ def test_filter_jobs_with_keywords(temp_db):
     import sqlite3
     import database
     
-    original_get_db_path = database.get_db_path
-    database.get_db_path = lambda: temp_db
+    from src.database import get_db_path, insert_job
+    original_get_db_path = get_db_path
+    import src.database as database_module
+    database_module.get_db_path = lambda: temp_db
     
     try:
-        from job_filter import filter_jobs
+        from src.job_filter import filter_jobs
         
         # Insérer des offres de test
         jobs = [
@@ -39,7 +42,7 @@ def test_filter_jobs_with_keywords(temp_db):
         ]
         
         for job in jobs:
-            database.insert_job(job)
+            insert_job(job)
         
         # Filtrer avec des mots-clés
         filtered = filter_jobs(
@@ -54,5 +57,5 @@ def test_filter_jobs_with_keywords(temp_db):
         assert any('Python' in title and 'Junior' in title for title in job_titles)
         assert not any('Senior' in title for title in job_titles)
     finally:
-        database.get_db_path = original_get_db_path
+        database_module.get_db_path = original_get_db_path
 

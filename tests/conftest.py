@@ -55,49 +55,26 @@ def sample_cvs(temp_config_dir):
 
 @pytest.fixture
 def temp_db():
-    """Crée une base de données temporaire pour les tests."""
+    """Crée une base de données temporaire pour les tests avec le schéma complet."""
     import sqlite3
+    from src.database import create_database, get_db_path
+    
     temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
     temp_db.close()
     
-    conn = sqlite3.connect(temp_db.name)
-    c = conn.cursor()
+    # Sauvegarder le chemin original
+    original_get_db_path = get_db_path
     
-    # Créer les tables
-    c.execute('''CREATE TABLE IF NOT EXISTS jobs
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  title TEXT,
-                  company TEXT,
-                  location TEXT,
-                  url TEXT,
-                  description TEXT,
-                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                  UNIQUE(title, company, location))''')
+    # Remplacer temporairement get_db_path pour utiliser la base de données temporaire
+    import src.database as database_module
+    database_module.get_db_path = lambda: temp_db.name
     
-    c.execute('''CREATE TABLE IF NOT EXISTS applications
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  job_id INTEGER,
-                  persona_email TEXT,
-                  persona_name TEXT,
-                  cv_path TEXT,
-                  cover_letter TEXT,
-                  applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                  status TEXT DEFAULT 'pending',
-                  FOREIGN KEY (job_id) REFERENCES jobs(id),
-                  UNIQUE(job_id, persona_email))''')
-    
-    c.execute('''CREATE TABLE IF NOT EXISTS persona_emails
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  persona_email TEXT,
-                  sender TEXT,
-                  subject TEXT,
-                  body TEXT,
-                  received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                  is_read INTEGER DEFAULT 0,
-                  email_type TEXT DEFAULT 'application')''')
-    
-    conn.commit()
-    conn.close()
+    try:
+        # Créer la base de données avec le schéma complet
+        create_database()
+    finally:
+        # Restaurer le chemin original
+        database_module.get_db_path = original_get_db_path
     
     yield temp_db.name
     

@@ -44,12 +44,13 @@ def test_insert_email(client, test_persona):
 def test_get_persona_emails(client, test_persona):
     """Test la récupération des emails d'un persona."""
     # Insérer quelques emails
-    insert_email(test_persona['email'], 'sender1@test.com', 'Subject 1', 'Body 1')
-    insert_email(test_persona['email'], 'sender2@test.com', 'Subject 2', 'Body 2')
+    insert_email(test_persona['email'], 'sender1@test.com', 'Subject 1', 'Body 1', is_test_data=True)
+    insert_email(test_persona['email'], 'sender2@test.com', 'Subject 2', 'Body 2', is_test_data=True)
     
     emails = get_persona_emails(test_persona['email'])
-    assert len(emails) >= 2
-    assert emails[0]['sender'] in ['sender1@test.com', 'sender2@test.com']
+    # Filtrer les emails de test pour ne garder que ceux qu'on vient d'insérer
+    test_emails = [e for e in emails if e['sender'] in ['sender1@test.com', 'sender2@test.com']]
+    assert len(test_emails) >= 2
 
 def test_api_get_persona_emails(client, test_persona):
     """Test l'API de récupération des emails."""

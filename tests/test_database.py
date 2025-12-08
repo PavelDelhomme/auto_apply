@@ -50,7 +50,7 @@ def test_insert_job(temp_db):
             'description': 'Description du poste'
         }
         
-        job_id = insert_job(job)
+        job_id = insert_job(job, is_test_data=True)
         assert job_id is not None
         
         # Vérifier que l'offre a été insérée
@@ -142,7 +142,8 @@ def test_insert_email(temp_db):
             sender='sender@example.com',
             subject='Test Subject',
             body='Test body',
-            email_type='application'
+            email_type='application',
+            is_test_data=True
         )
         
         assert email_id is not None
@@ -177,7 +178,7 @@ def test_get_unapplied_jobs(temp_db):
         job2_id = insert_job(job2)
         
         # Candidater à job1 seulement
-        insert_application(job1_id, 'test@example.com', 'Test', '/cv.pdf')
+        insert_application(job1_id, 'test@example.com', 'Test', '/cv.pdf', 'Cover letter test')
         
         # Récupérer les offres non candidatées
         unapplied = get_unapplied_jobs('test@example.com')
