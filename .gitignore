@@ -43,3 +43,6 @@ ENV/
 chromedriver
 chromedriver.exe
 
+# Rapports de test
+test_reports/
+
