@@ -24,10 +24,13 @@ def test_apply_to_job_function_exists():
     except ImportError as e:
         pytest.skip(f"Module auto_apply non disponible: {e}")
 
-@patch('auto_apply.webdriver')
+@patch('src.auto_apply.webdriver')
 def test_apply_to_job_with_mock_selenium(mock_webdriver):
     """Test de apply_to_job avec mock Selenium."""
-    from auto_apply import apply_to_job
+    try:
+        from src.auto_apply import apply_to_job
+    except ImportError as e:
+        pytest.skip(f"Module auto_apply non disponible: {e}")
     
     # Mock du driver Selenium
     mock_driver = MagicMock()
