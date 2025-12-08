@@ -5,10 +5,10 @@ import pytest
 import sys
 import os
 
-# Ajouter le répertoire src au path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+# Ajouter le répertoire racine au path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from app import app
+from src.app import app
 from database import create_database, insert_email, get_persona_emails, get_db_path
 import sqlite3
 
