@@ -188,7 +188,7 @@ test: ## Lance la suite complète de tests (connexion, unitaires, intégration, 
 	@printf "$(GREEN)✅ Dépendances prêtes$(NC)\n"
 	@printf "\n"
 	@printf "$(YELLOW)🔬 Étape 3/5: Tests unitaires...$(NC)\n"
-	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/ -v --tb=short -m "not integration" --junitxml=/tmp/test-results-unit.xml || TEST_UNIT_FAILED=1; \
+	@docker-compose -f $(COMPOSE_FILE) exec -e PYTHONPATH=/app $(SERVICE_NAME) python -m pytest tests/ -v --tb=short -m "not integration" --junitxml=/tmp/test-results-unit.xml || TEST_UNIT_FAILED=1; \
 	if [ -z "$$TEST_UNIT_FAILED" ]; then \
 		printf "$(GREEN)✅ Tests unitaires réussis$(NC)\n"; \
 	else \
@@ -196,7 +196,7 @@ test: ## Lance la suite complète de tests (connexion, unitaires, intégration, 
 	fi
 	@printf "\n"
 	@printf "$(YELLOW)🔗 Étape 4/5: Tests d'intégration...$(NC)\n"
-	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/ -v --tb=short -m integration --junitxml=/tmp/test-results-integration.xml || TEST_INTEGRATION_FAILED=1; \
+	@docker-compose -f $(COMPOSE_FILE) exec -e PYTHONPATH=/app $(SERVICE_NAME) python -m pytest tests/ -v --tb=short -m integration --junitxml=/tmp/test-results-integration.xml || TEST_INTEGRATION_FAILED=1; \
 	if [ -z "$$TEST_INTEGRATION_FAILED" ]; then \
 		printf "$(GREEN)✅ Tests d'intégration réussis$(NC)\n"; \
 	else \
@@ -222,15 +222,17 @@ test: ## Lance la suite complète de tests (connexion, unitaires, intégration, 
 
 test-unit: ## Lance uniquement les tests unitaires
 	@printf "$(GREEN)🧪 Lancement des tests unitaires...$(NC)\n"
-	@printf "$(YELLOW)📦 Vérification de l'installation de pytest...$(NC)\n"
+	@printf "$(YELLOW)📦 Mise à jour de pip et vérification de l'installation de pytest...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install --upgrade pip --quiet 2>/dev/null || true
 	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install -q pytest pytest-cov pytest-mock 2>/dev/null || true
-	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/ -v --tb=short -m "not integration" --junitxml=/tmp/test-results-unit.xml || printf "$(YELLOW)⚠️  Certains tests peuvent nécessiter une configuration spécifique$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec -e PYTHONPATH=/app $(SERVICE_NAME) python -m pytest tests/ -v --tb=short -m "not integration" --junitxml=/tmp/test-results-unit.xml || printf "$(YELLOW)⚠️  Certains tests peuvent nécessiter une configuration spécifique$(NC)\n"
 
 test-integration: ## Lance uniquement les tests d'intégration
 	@printf "$(GREEN)🧪 Lancement des tests d'intégration...$(NC)\n"
-	@printf "$(YELLOW)📦 Vérification de l'installation de pytest...$(NC)\n"
+	@printf "$(YELLOW)📦 Mise à jour de pip et vérification de l'installation de pytest...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install --upgrade pip --quiet 2>/dev/null || true
 	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install -q pytest pytest-cov pytest-mock 2>/dev/null || true
-	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/ -v --tb=short -m integration --junitxml=/tmp/test-results-integration.xml || printf "$(YELLOW)⚠️  Les tests d'intégration nécessitent une configuration complète$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec -e PYTHONPATH=/app $(SERVICE_NAME) python -m pytest tests/ -v --tb=short -m integration --junitxml=/tmp/test-results-integration.xml || printf "$(YELLOW)⚠️  Les tests d'intégration nécessitent une configuration complète$(NC)\n"
 
 test-all: ## Lance tous les tests avec couverture complète
 	@printf "$(GREEN)🧪 Lancement de TOUS les tests avec couverture complète...$(NC)\n"
