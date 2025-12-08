@@ -175,31 +175,96 @@ open: ## Ouvre l'interface dans le navigateur
 		printf "$(YELLOW)Ouvrez manuellement: http://localhost:$(PORT)$(NC)\n"; \
 	fi
 
-test: ## Teste la connexion au conteneur
-	@printf "$(GREEN)🧪 Test de connexion...$(NC)\n"
-	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -c "import sys; print('Python:', sys.version)" || printf "$(RED)❌ Le conteneur n'est pas accessible$(NC)\n"
+test: ## Lance la suite complète de tests (connexion, unitaires, intégration, FAB, couverture)
+	@printf "$(GREEN)═══════════════════════════════════════════════════════════════$(NC)\n"
+	@printf "$(GREEN)🧪 SUITE COMPLÈTE DE TESTS$(NC)\n"
+	@printf "$(GREEN)═══════════════════════════════════════════════════════════════$(NC)\n"
+	@printf "\n"
+	@printf "$(YELLOW)📋 Étape 1/5: Vérification de la connexion au conteneur...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -c "import sys; print('✅ Python:', sys.version.split()[0])" 2>/dev/null || (printf "$(RED)❌ Le conteneur n'est pas accessible$(NC)\n"; exit 1)
+	@printf "\n"
+	@printf "$(YELLOW)📦 Étape 2/5: Installation/Vérification des dépendances de test...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install -q pytest pytest-cov pytest-mock pytest-html 2>/dev/null || true
+	@printf "$(GREEN)✅ Dépendances prêtes$(NC)\n"
+	@printf "\n"
+	@printf "$(YELLOW)🔬 Étape 3/5: Tests unitaires...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/ -v --tb=short -m "not integration" --junitxml=/tmp/test-results-unit.xml || TEST_UNIT_FAILED=1; \
+	if [ -z "$$TEST_UNIT_FAILED" ]; then \
+		printf "$(GREEN)✅ Tests unitaires réussis$(NC)\n"; \
+	else \
+		printf "$(RED)❌ Certains tests unitaires ont échoué$(NC)\n"; \
+	fi
+	@printf "\n"
+	@printf "$(YELLOW)🔗 Étape 4/5: Tests d'intégration...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/ -v --tb=short -m integration --junitxml=/tmp/test-results-integration.xml || TEST_INTEGRATION_FAILED=1; \
+	if [ -z "$$TEST_INTEGRATION_FAILED" ]; then \
+		printf "$(GREEN)✅ Tests d'intégration réussis$(NC)\n"; \
+	else \
+		printf "$(YELLOW)⚠️  Certains tests d'intégration ont échoué (peut nécessiter une configuration)$(NC)\n"; \
+	fi
+	@printf "\n"
+	@printf "$(YELLOW)🎯 Étape 5/5: Tests FAB et rapport de couverture...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/test_fab_functionality.py -v --tb=short --cov=src --cov-report=term-missing --cov-report=html:/tmp/coverage_html --junitxml=/tmp/test-results-fab.xml || TEST_FAB_FAILED=1; \
+	if [ -z "$$TEST_FAB_FAILED" ]; then \
+		printf "$(GREEN)✅ Tests FAB réussis$(NC)\n"; \
+	else \
+		printf "$(RED)❌ Certains tests FAB ont échoué$(NC)\n"; \
+	fi
+	@printf "\n"
+	@printf "$(GREEN)═══════════════════════════════════════════════════════════════$(NC)\n"
+	@printf "$(GREEN)📊 RÉSUMÉ DES TESTS$(NC)\n"
+	@printf "$(GREEN)═══════════════════════════════════════════════════════════════$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/ -v --tb=no -q --co -q 2>/dev/null | tail -1 || true
+	@printf "\n"
+	@printf "$(GREEN)✅ Suite de tests terminée!$(NC)\n"
+	@printf "$(YELLOW)💡 Utilisez 'make test-unit', 'make test-integration' ou 'make test-all' pour des tests spécifiques$(NC)\n"
+	@printf "$(YELLOW)💡 Rapport HTML de couverture disponible dans /tmp/coverage_html/index.html (dans le conteneur)$(NC)\n"
 
-test-unit: ## Lance les tests unitaires
+test-unit: ## Lance uniquement les tests unitaires
 	@printf "$(GREEN)🧪 Lancement des tests unitaires...$(NC)\n"
 	@printf "$(YELLOW)📦 Vérification de l'installation de pytest...$(NC)\n"
 	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install -q pytest pytest-cov pytest-mock 2>/dev/null || true
-	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/ -v --tb=short -m "not integration" || printf "$(YELLOW)⚠️  Certains tests peuvent nécessiter une configuration spécifique$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/ -v --tb=short -m "not integration" --junitxml=/tmp/test-results-unit.xml || printf "$(YELLOW)⚠️  Certains tests peuvent nécessiter une configuration spécifique$(NC)\n"
 
-test-integration: ## Lance les tests d'intégration
+test-integration: ## Lance uniquement les tests d'intégration
 	@printf "$(GREEN)🧪 Lancement des tests d'intégration...$(NC)\n"
 	@printf "$(YELLOW)📦 Vérification de l'installation de pytest...$(NC)\n"
 	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install -q pytest pytest-cov pytest-mock 2>/dev/null || true
-	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/ -v --tb=short -m integration || printf "$(YELLOW)⚠️  Les tests d'intégration nécessitent une configuration complète$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/ -v --tb=short -m integration --junitxml=/tmp/test-results-integration.xml || printf "$(YELLOW)⚠️  Les tests d'intégration nécessitent une configuration complète$(NC)\n"
 
-test-all: ## Lance tous les tests
-	@printf "$(GREEN)🧪 Lancement de tous les tests...$(NC)\n"
+test-all: ## Lance tous les tests avec couverture complète
+	@printf "$(GREEN)🧪 Lancement de TOUS les tests avec couverture complète...$(NC)\n"
+	@printf "$(YELLOW)📦 Vérification de l'installation de pytest...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install -q pytest pytest-cov pytest-mock pytest-html 2>/dev/null || true
+	@printf "$(GREEN)🔬 Exécution de tous les tests...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/ -v --tb=short --cov=src --cov-report=term-missing --cov-report=html:/tmp/coverage_html --cov-report=xml:/tmp/coverage.xml --junitxml=/tmp/test-results.xml || printf "$(YELLOW)⚠️  Certains tests peuvent nécessiter une configuration spécifique$(NC)\n"
+	@printf "\n"
+	@printf "$(GREEN)📊 Rapport de couverture généré:$(NC)\n"
+	@printf "$(YELLOW)   - HTML: /tmp/coverage_html/index.html (dans le conteneur)$(NC)\n"
+	@printf "$(YELLOW)   - XML: /tmp/coverage.xml (dans le conteneur)$(NC)\n"
+	@printf "$(YELLOW)   - JUnit: /tmp/test-results.xml (dans le conteneur)$(NC)\n"
+
+test-fab: ## Lance uniquement les tests FAB (Floating Action Button)
+	@printf "$(GREEN)🧪 Lancement des tests FAB...$(NC)\n"
 	@printf "$(YELLOW)📦 Vérification de l'installation de pytest...$(NC)\n"
 	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install -q pytest pytest-cov pytest-mock 2>/dev/null || true
-	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/ -v --tb=short --cov=src --cov-report=term-missing || printf "$(YELLOW)⚠️  Certains tests peuvent nécessiter une configuration spécifique$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/test_fab_functionality.py -v --tb=short --cov=src/app --cov-report=term-missing --junitxml=/tmp/test-results-fab.xml || printf "$(YELLOW)⚠️  Certains tests FAB peuvent nécessiter une configuration spécifique$(NC)\n"
+
+test-connection: ## Teste uniquement la connexion au conteneur
+	@printf "$(GREEN)🧪 Test de connexion...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -c "import sys; print('✅ Python:', sys.version.split()[0])" 2>/dev/null || (printf "$(RED)❌ Le conteneur n'est pas accessible$(NC)\n"; exit 1)
 
 test-local: ## Lance les tests localement (sans Docker)
 	@printf "$(GREEN)🧪 Lancement des tests localement...$(NC)\n"
-	@pytest tests/ -v --tb=short || printf "$(YELLOW)⚠️  Assurez-vous que pytest est installé: pip install -r requirements.txt$(NC)\n"
+	@printf "$(YELLOW)⚠️  Assurez-vous que pytest est installé: pip install -r requirements.txt$(NC)\n"
+	@pytest tests/ -v --tb=short --cov=src --cov-report=term-missing || printf "$(YELLOW)⚠️  Assurez-vous que pytest est installé: pip install -r requirements.txt$(NC)\n"
+
+test-coverage: ## Affiche le rapport de couverture détaillé
+	@printf "$(GREEN)📊 Génération du rapport de couverture...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install -q pytest-cov 2>/dev/null || true
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/ --cov=src --cov-report=html:/tmp/coverage_html --cov-report=term-missing
+	@printf "$(GREEN)✅ Rapport généré dans /tmp/coverage_html/index.html (dans le conteneur)$(NC)\n"
+	@printf "$(YELLOW)💡 Pour voir le rapport: make shell puis ouvrir /tmp/coverage_html/index.html$(NC)\n"
 
 install-deps: ## Installe les dépendances localement (sans Docker)
 	@printf "$(GREEN)📦 Installation des dépendances Python...$(NC)\n"
