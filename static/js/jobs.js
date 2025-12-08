@@ -309,3 +309,139 @@ async function scrapeJobs() {
         }
     }
 }
+
+// Variables pour l'historique des recherches
+let searchHistoryPage = 1;
+let searchHistoryPerPage = 20;
+
+// Afficher l'historique des recherches
+async function showSearchHistory() {
+    const modal = document.getElementById('searchHistoryModal');
+    if (modal) {
+        modal.classList.add('active');
+        await loadSearchHistory();
+    }
+}
+
+function closeSearchHistoryModal() {
+    const modal = document.getElementById('searchHistoryModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+async function loadSearchHistory(page = 1) {
+    const container = document.getElementById('searchHistoryList');
+    const pagination = document.getElementById('searchHistoryPagination');
+    
+    if (!container) return;
+    
+    try {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">⏳ Chargement de l\'historique...</p>';
+        
+        const response = await fetch(`/api/job-searches?page=${page}&per_page=${searchHistoryPerPage}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error || 'Erreur inconnue');
+        
+        const searches = data.searches || [];
+        const paginationInfo = data.pagination || {};
+        
+        if (searches.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Aucune recherche enregistrée</p>';
+            if (pagination) pagination.innerHTML = '';
+            return;
+        }
+        
+        let html = '<div style="display: grid; gap: 15px;">';
+        searches.forEach(search => {
+            const date = new Date(search.created_at);
+            const dateStr = date.toLocaleString('fr-FR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            html += `
+                <div style="
+                    padding: 15px;
+                    border: 2px solid var(--border-color);
+                    border-radius: 10px;
+                    background: var(--bg-card);
+                    transition: all 0.3s ease;
+                    cursor: pointer;
+                " onmouseenter="this.style.borderColor='var(--text-title)'; this.style.transform='translateY(-2px)'" 
+                   onmouseleave="this.style.borderColor='var(--border-color)'; this.style.transform='translateY(0)'"
+                   onclick="relaunchSearch('${search.query}', '${search.location}', ${search.max_results})">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                        <div style="flex: 1;">
+                            <strong style="color: var(--text-primary); font-size: 1.1em; display: block; margin-bottom: 5px;">
+                                🔍 ${search.query || 'Sans mots-clés'}
+                            </strong>
+                            <div style="color: var(--text-secondary); font-size: 0.9em;">
+                                📍 ${search.location || 'N/A'} | 
+                                📊 ${search.jobs_found || 0} offre(s) trouvée(s) | 
+                                🎯 Max: ${search.max_results || 50}
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="color: var(--text-secondary); font-size: 0.85em;">${dateStr}</div>
+                            <div style="color: var(--text-secondary); font-size: 0.8em; margin-top: 5px;">
+                                ${search.platform || 'indeed'}
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" 
+                            onclick="event.stopPropagation(); relaunchSearch('${search.query}', '${search.location}', ${search.max_results})">
+                        🔄 Relancer cette recherche
+                    </button>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        container.innerHTML = html;
+        
+        // Pagination
+        if (pagination && paginationInfo.pages > 1) {
+            let paginationHtml = '';
+            if (paginationInfo.page > 1) {
+                paginationHtml += `<button class="btn" onclick="loadSearchHistory(${paginationInfo.page - 1})">◀ Précédent</button>`;
+            }
+            paginationHtml += `<span style="padding: 10px 15px; color: var(--text-secondary);">
+                Page ${paginationInfo.page} / ${paginationInfo.pages} (${paginationInfo.total} recherches)
+            </span>`;
+            if (paginationInfo.page < paginationInfo.pages) {
+                paginationHtml += `<button class="btn" onclick="loadSearchHistory(${paginationInfo.page + 1})">Suivant ▶</button>`;
+            }
+            pagination.innerHTML = paginationHtml;
+        } else if (pagination) {
+            pagination.innerHTML = '';
+        }
+        
+        searchHistoryPage = page;
+    } catch (error) {
+        console.error('Erreur chargement historique:', error);
+        container.innerHTML = `<p style="text-align: center; color: var(--error);">Erreur: ${error.message}</p>`;
+    }
+}
+
+function relaunchSearch(query, location, maxResults) {
+    // Remplir les champs de recherche
+    const queryInput = document.getElementById('jobsSearchQuery');
+    const locationInput = document.getElementById('jobsSearchLocation');
+    
+    if (queryInput) queryInput.value = query;
+    if (locationInput) locationInput.value = location;
+    
+    // Fermer le modal
+    closeSearchHistoryModal();
+    
+    // Lancer la recherche
+    setTimeout(() => {
+        scrapeJobs();
+    }, 300);
+}

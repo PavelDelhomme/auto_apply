@@ -15,7 +15,8 @@ from .database import (create_database, insert_job, get_unapplied_jobs, insert_a
                       update_application_status, get_db_path, insert_email, insert_log, 
                       get_logs, insert_historical_stat, get_historical_stats, 
                       delete_test_data, mark_as_test_data, save_persona_cv, get_persona_cv, 
-                      get_all_persona_cvs, get_all_jobs)
+                      get_all_persona_cvs, get_all_jobs, insert_job_search, get_job_searches, 
+                      get_job_search_count)
 from .stats import get_statistics
 from .application_generator import generate_cover_letter
 from .persona_manager import PersonaManager
@@ -1577,6 +1578,10 @@ def api_scrape_jobs():
             
             for job in jobs:
                 insert_job(job)
+            
+            # Enregistrer la recherche dans l'historique
+            platform = data.get('platform', 'indeed')
+            insert_job_search(query, location, max_results, len(jobs), platform)
             
             app_state['jobs_found'] = len(jobs)
             update_stats()

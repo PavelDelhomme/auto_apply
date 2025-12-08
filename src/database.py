@@ -52,7 +52,18 @@ def create_database():
                   cv_data TEXT,
                   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                   is_default INTEGER DEFAULT 0,
-                  UNIQUE(persona_email, search_key, cv_id))''')
+                  UNIQUE(persona_email, search_key, cv_id))
+    
+    # Table pour l'historique des recherches d'offres
+    c.execute('''CREATE TABLE IF NOT EXISTS job_searches
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  query TEXT NOT NULL,
+                  location TEXT NOT NULL,
+                  max_results INTEGER DEFAULT 50,
+                  jobs_found INTEGER DEFAULT 0,
+                  platform TEXT DEFAULT 'indeed',
+                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  is_test_data INTEGER DEFAULT 0)''')
     
     # Table des emails reçus par les personas
     c.execute('''CREATE TABLE IF NOT EXISTS persona_emails
@@ -125,6 +136,58 @@ def insert_job(job, is_test_data=False):
         return None
     finally:
         conn.close()
+
+def insert_job_search(query, location, max_results=50, jobs_found=0, platform='indeed', is_test_data=False):
+    """Enregistre une recherche d'offres dans l'historique."""
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    
+    c.execute('''INSERT INTO job_searches (query, location, max_results, jobs_found, platform, is_test_data)
+                 VALUES (?, ?, ?, ?, ?, ?)''',
+              (query, location, max_results, jobs_found, platform, 1 if is_test_data else 0))
+    conn.commit()
+    search_id = c.lastrowid
+    conn.close()
+    return search_id
+
+def get_job_searches(limit=50, offset=0):
+    """Récupère l'historique des recherches d'offres."""
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    
+    c.execute('''SELECT id, query, location, max_results, jobs_found, platform, created_at, is_test_data
+                 FROM job_searches
+                 ORDER BY created_at DESC
+                 LIMIT ? OFFSET ?''', (limit, offset))
+    
+    searches = []
+    for row in c.fetchall():
+        searches.append({
+            'id': row[0],
+            'query': row[1],
+            'location': row[2],
+            'max_results': row[3],
+            'jobs_found': row[4],
+            'platform': row[5],
+            'created_at': row[6],
+            'is_test_data': bool(row[7])
+        })
+    
+    conn.close()
+    return searches
+
+def get_job_search_count():
+    """Retourne le nombre total de recherches enregistrées."""
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    
+    c.execute('SELECT COUNT(*) FROM job_searches')
+    count = c.fetchone()[0]
+    conn.close()
+    return count
 
 def get_all_jobs(limit=None, order_by='created_at DESC', exclude_test=False):
     """Récupère toutes les offres d'emploi."""
