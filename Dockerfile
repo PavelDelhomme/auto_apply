@@ -52,7 +52,7 @@ RUN mkdir -p /app/cvs /app/data && \
     chmod -R 777 /app
 
 # Définir le PYTHONPATH pour que les imports fonctionnent
-ENV PYTHONPATH=/app/src
+ENV PYTHONPATH=/app
 
 # Exposer le port
 EXPOSE 2020

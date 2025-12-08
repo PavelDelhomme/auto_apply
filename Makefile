@@ -237,7 +237,7 @@ test-all: ## Lance tous les tests avec couverture complète
 	@printf "$(YELLOW)📦 Vérification de l'installation de pytest...$(NC)\n"
 	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install -q pytest pytest-cov pytest-mock pytest-html 2>/dev/null || true
 	@printf "$(GREEN)🔬 Exécution de tous les tests...$(NC)\n"
-	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/ -v --tb=short --cov=src --cov-report=term-missing --cov-report=html:/tmp/coverage_html --cov-report=xml:/tmp/coverage.xml --junitxml=/tmp/test-results.xml || printf "$(YELLOW)⚠️  Certains tests peuvent nécessiter une configuration spécifique$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec -e PYTHONPATH=/app $(SERVICE_NAME) python -m pytest tests/ -v --tb=short --cov=src --cov-config=.coveragerc --cov-report=term-missing --cov-report=html:/tmp/coverage_html --cov-report=xml:/tmp/coverage.xml --junitxml=/tmp/test-results.xml || printf "$(YELLOW)⚠️  Certains tests peuvent nécessiter une configuration spécifique$(NC)\n"
 	@printf "\n"
 	@printf "$(GREEN)📊 Rapport de couverture généré:$(NC)\n"
 	@printf "$(YELLOW)   - HTML: /tmp/coverage_html/index.html (dans le conteneur)$(NC)\n"
@@ -248,7 +248,7 @@ test-fab: ## Lance uniquement les tests FAB (Floating Action Button)
 	@printf "$(GREEN)🧪 Lancement des tests FAB...$(NC)\n"
 	@printf "$(YELLOW)📦 Vérification de l'installation de pytest...$(NC)\n"
 	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install -q pytest pytest-cov pytest-mock 2>/dev/null || true
-	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/test_fab_functionality.py -v --tb=short --cov=src/app --cov-report=term-missing --junitxml=/tmp/test-results-fab.xml || printf "$(YELLOW)⚠️  Certains tests FAB peuvent nécessiter une configuration spécifique$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec -e PYTHONPATH=/app $(SERVICE_NAME) python -m pytest tests/test_fab_functionality.py -v --tb=short --cov=src --cov-config=.coveragerc --cov-report=term-missing --cov-report=html:/tmp/coverage_html --junitxml=/tmp/test-results-fab.xml || printf "$(YELLOW)⚠️  Certains tests FAB peuvent nécessiter une configuration spécifique$(NC)\n"
 
 test-connection: ## Teste uniquement la connexion au conteneur
 	@printf "$(GREEN)🧪 Test de connexion...$(NC)\n"
@@ -262,7 +262,7 @@ test-local: ## Lance les tests localement (sans Docker)
 test-coverage: ## Affiche le rapport de couverture détaillé
 	@printf "$(GREEN)📊 Génération du rapport de couverture...$(NC)\n"
 	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install -q pytest-cov 2>/dev/null || true
-	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/ --cov=src --cov-report=html:/tmp/coverage_html --cov-report=term-missing
+	@docker-compose -f $(COMPOSE_FILE) exec -e PYTHONPATH=/app $(SERVICE_NAME) python -m pytest tests/ --cov=src --cov-config=.coveragerc --cov-report=html:/tmp/coverage_html --cov-report=term-missing
 	@printf "$(GREEN)✅ Rapport généré dans /tmp/coverage_html/index.html (dans le conteneur)$(NC)\n"
 	@printf "$(YELLOW)💡 Pour voir le rapport: make shell puis ouvrir /tmp/coverage_html/index.html$(NC)\n"
 
