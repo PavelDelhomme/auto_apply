@@ -6,7 +6,7 @@ Interface en ligne de commande pour Auto Apply
 import argparse
 import json
 import sys
-from database import create_database
+from .database import create_database
 from scraper import scrape_indeed
 from job_filter import filter_jobs
 from cv_generator import generate_cvs_from_json

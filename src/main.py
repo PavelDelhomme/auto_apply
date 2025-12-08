@@ -1,7 +1,7 @@
 import json
 import random
 from scraper import scrape_indeed
-from database import create_database, insert_job, insert_application, update_application_status
+from .database import create_database, insert_job, insert_application, update_application_status
 from job_filter import filter_jobs
 from auto_apply import apply_to_job
 from stats import get_statistics
