@@ -508,36 +508,89 @@ async function loadInitialStats() {
 // Générer les CVs
 async function generateCVs() {
     try {
+        addLog('📄 Génération des CVs en cours...', 'info');
         const response = await fetch('/api/generate_cvs', { method: 'POST' });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
         const data = await response.json();
         if (data.success) {
-            addLog(`${data.count} CVs générés avec succès`, 'success');
+            addLog(`✅ ${data.count} CV(s) généré(s) avec succès`, 'success');
+            if (typeof showToast === 'function') {
+                showToast(`${data.count} CV(s) généré(s)`, 'success');
+            }
+        } else {
+            throw new Error(data.error || 'Erreur lors de la génération');
         }
     } catch (error) {
-        addLog(`Erreur: ${error.message}`, 'error');
+        addLog(`❌ Erreur lors de la génération des CVs: ${error.message}`, 'error');
+        if (typeof showToast === 'function') {
+            showToast(`Erreur: ${error.message}`, 'error');
+        } else {
+            alert(`Erreur: ${error.message}`);
+        }
     }
 }
 
 // Rechercher des offres
 async function scrapeJobs() {
-    const query = prompt('Mots-clés de recherche:', 'développeur python');
-    if (!query) return;
+    // Vérifier si on est sur la page jobs, si oui utiliser les champs existants
+    const jobsQuery = document.getElementById('jobsSearchQuery');
+    const jobsLocation = document.getElementById('jobsSearchLocation');
     
-    const location = prompt('Localisation:', 'Rennes');
-    if (!location) return;
+    let query, location;
+    
+    if (jobsQuery && jobsLocation) {
+        query = jobsQuery.value.trim();
+        location = jobsLocation.value.trim();
+    } else {
+        // Sinon, ouvrir un modal ou utiliser des valeurs par défaut
+        query = prompt('Mots-clés de recherche:', 'développeur python');
+        if (!query) return;
+        
+        location = prompt('Localisation:', 'Rennes');
+        if (!location) return;
+    }
+    
+    if (!query || !location) {
+        if (typeof showToast === 'function') {
+            showToast('Veuillez remplir les champs de recherche', 'warning');
+        } else {
+            alert('Veuillez remplir les champs de recherche');
+        }
+        return;
+    }
     
     try {
+        addLog(`🔍 Démarrage de la recherche: "${query}" à ${location}...`, 'info');
         const response = await fetch('/api/scrape_jobs', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ query, location, max_results: 50 })
         });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
         const data = await response.json();
         if (data.success) {
-            addLog('Recherche d\'offres démarrée...', 'info');
+            addLog('✅ Recherche d\'offres démarrée avec succès', 'success');
+            if (typeof showToast === 'function') {
+                showToast('Recherche d\'offres démarrée', 'success');
+            }
+        } else {
+            throw new Error(data.error || 'Erreur inconnue');
         }
     } catch (error) {
-        addLog(`Erreur: ${error.message}`, 'error');
+        addLog(`❌ Erreur lors de la recherche: ${error.message}`, 'error');
+        if (typeof showToast === 'function') {
+            showToast(`Erreur: ${error.message}`, 'error');
+        } else {
+            alert(`Erreur: ${error.message}`);
+        }
     }
 }
 
@@ -604,16 +657,25 @@ async function startAutoApplyFromModal() {
     const location = document.getElementById('modalLocation')?.value || '';
     
     if (!query || !location) {
-        alert('Veuillez remplir tous les champs');
+        if (typeof showToast === 'function') {
+            showToast('Veuillez remplir tous les champs', 'warning');
+        } else {
+            alert('Veuillez remplir tous les champs');
+        }
         return;
     }
     
     if (selectedPersonas.size === 0) {
-        alert('Veuillez sélectionner au moins un persona');
+        if (typeof showToast === 'function') {
+            showToast('Veuillez sélectionner au moins un persona', 'warning');
+        } else {
+            alert('Veuillez sélectionner au moins un persona');
+        }
         return;
     }
     
     try {
+        addLog('🚀 Démarrage de Auto Apply...', 'info');
         const response = await fetch('/api/start_auto_apply', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -624,27 +686,67 @@ async function startAutoApplyFromModal() {
             })
         });
         
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
         const data = await response.json();
         if (data.success) {
-            addLog('Auto Apply démarré', 'success');
+            addLog('✅ Auto Apply démarré avec succès', 'success');
+            if (typeof showToast === 'function') {
+                showToast('Auto Apply démarré', 'success');
+            }
             closeAutoApplyModal();
+            // Mettre à jour l'état
+            if (typeof updateStatusUI === 'function') {
+                updateStatusUI('running', true);
+            }
         } else {
-            addLog(`Erreur: ${data.error}`, 'error');
+            throw new Error(data.error || 'Erreur lors du démarrage');
         }
     } catch (error) {
-        addLog(`Erreur: ${error.message}`, 'error');
+        addLog(`❌ Erreur lors du démarrage: ${error.message}`, 'error');
+        if (typeof showToast === 'function') {
+            showToast(`Erreur: ${error.message}`, 'error');
+        } else {
+            alert(`Erreur: ${error.message}`);
+        }
     }
 }
 
 async function stopAutoApply() {
+    if (!confirm('Êtes-vous sûr de vouloir arrêter le processus Auto Apply ?')) {
+        return;
+    }
+    
     try {
+        addLog('⏹️ Arrêt du processus Auto Apply...', 'warning');
         const response = await fetch('/api/stop_auto_apply', { method: 'POST' });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
         const data = await response.json();
         if (data.success) {
-            addLog('Auto Apply arrêté', 'info');
+            addLog('✅ Auto Apply arrêté avec succès', 'success');
+            if (typeof showToast === 'function') {
+                showToast('Auto Apply arrêté', 'success');
+            }
+            // Mettre à jour l'état
+            if (typeof updateStatusUI === 'function') {
+                updateStatusUI('ready', false);
+            }
+        } else {
+            throw new Error(data.error || 'Erreur lors de l\'arrêt');
         }
     } catch (error) {
-        addLog(`Erreur: ${error.message}`, 'error');
+        addLog(`❌ Erreur lors de l'arrêt: ${error.message}`, 'error');
+        if (typeof showToast === 'function') {
+            showToast(`Erreur: ${error.message}`, 'error');
+        } else {
+            alert(`Erreur: ${error.message}`);
+        }
     }
 }
 
