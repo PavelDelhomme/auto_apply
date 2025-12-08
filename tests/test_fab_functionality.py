@@ -153,7 +153,7 @@ class TestTestApplication:
         mock_generate.return_value = '/app/cvs/test.pdf'
         mock_apply.return_value = True
         
-        response = client.post('/api/test_application',
+        response = client.post('/api/test-application',
                              json={
                                  'platform': 'indeed',
                                  'job_url': 'https://example.com/job',
@@ -167,7 +167,7 @@ class TestTestApplication:
     
     def test_test_application_missing_params(self, client):
         """Test de candidature sans paramètres."""
-        response = client.post('/api/test_application', json={})
+        response = client.post('/api/test-application', json={})
         assert response.status_code == 400
         
         data = json.loads(response.data)
@@ -179,7 +179,7 @@ class TestTestApplication:
         """Test de candidature avec persona introuvable."""
         mock_pm.get_persona_by_email.return_value = None
         
-        response = client.post('/api/test_application',
+        response = client.post('/api/test-application',
                              json={
                                  'platform': 'indeed',
                                  'job_url': 'https://example.com/job',
