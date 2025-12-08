@@ -36,7 +36,8 @@ WORKDIR /app
 
 # Copier et installer les dépendances Python
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copier le code source
 COPY src/ /app/src/

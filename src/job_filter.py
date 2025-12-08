@@ -1,5 +1,5 @@
 import sqlite3
-from database import get_unapplied_jobs
+from .database import get_unapplied_jobs
 
 def filter_jobs(title_keywords=None, location_keywords=None, persona_email=None, exclude_keywords=None):
     """

@@ -234,7 +234,8 @@ test-integration: ## Lance uniquement les tests d'intégration
 
 test-all: ## Lance tous les tests avec couverture complète
 	@printf "$(GREEN)🧪 Lancement de TOUS les tests avec couverture complète...$(NC)\n"
-	@printf "$(YELLOW)📦 Vérification de l'installation de pytest...$(NC)\n"
+	@printf "$(YELLOW)📦 Mise à jour de pip et vérification de l'installation de pytest...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install --upgrade pip --quiet 2>/dev/null || true
 	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install -q pytest pytest-cov pytest-mock pytest-html 2>/dev/null || true
 	@printf "$(GREEN)🔬 Exécution de tous les tests...$(NC)\n"
 	@docker-compose -f $(COMPOSE_FILE) exec -e PYTHONPATH=/app $(SERVICE_NAME) python -m pytest tests/ -v --tb=short --cov=src --cov-config=.coveragerc --cov-report=term-missing --cov-report=html:/tmp/coverage_html --cov-report=xml:/tmp/coverage.xml --junitxml=/tmp/test-results.xml || printf "$(YELLOW)⚠️  Certains tests peuvent nécessiter une configuration spécifique$(NC)\n"
