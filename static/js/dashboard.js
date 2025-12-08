@@ -1036,15 +1036,28 @@ async function startTestApplication() {
             })
         });
         
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
         const data = await response.json();
         if (data.success) {
-            addLog(`Test de candidature ${dryRun ? '(dry run) ' : ''}démarré`, 'success');
+            const modeText = dryRun ? '(Mode test - dry run) ' : '';
+            addLog(`✅ Test de candidature ${modeText}démarré avec succès`, 'success');
+            if (typeof showToast === 'function') {
+                showToast(`Test de candidature ${modeText}démarré`, 'success');
+            }
             closeTestApplicationModal();
         } else {
-            addLog(`Erreur: ${data.error || 'Erreur inconnue'}`, 'error');
+            throw new Error(data.error || 'Erreur inconnue');
         }
     } catch (error) {
-        addLog(`Erreur: ${error.message}`, 'error');
+        addLog(`❌ Erreur lors du test: ${error.message}`, 'error');
+        if (typeof showToast === 'function') {
+            showToast(`Erreur: ${error.message}`, 'error');
+        } else {
+            alert(`Erreur: ${error.message}`);
+        }
     }
 }
 
