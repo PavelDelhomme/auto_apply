@@ -15,12 +15,12 @@ create_database()
 
 def load_personas():
     """Charge les personas depuis le fichier JSON."""
-    with open('personas.json', 'r', encoding='utf-8') as file:
+    with open('config/personas.json', 'r', encoding='utf-8') as file:
         return json.load(file)
 
 def load_cvs():
     """Charge les CVs depuis le fichier JSON."""
-    with open('cvs.json', 'r', encoding='utf-8') as file:
+    with open('config/cvs.json', 'r', encoding='utf-8') as file:
         return json.load(file)
 
 # Route pour la page d'accueil

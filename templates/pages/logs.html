@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Logs & Historique - Auto Apply{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>📋 Logs en temps réel</h2>
+    <div class="logs-container" id="logsContainer">
+        <div class="log-entry">
+            <span class="log-timestamp">--:--:--</span>
+            <span class="log-level info">INFO</span>
+            <span>En attente de connexion...</span>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>📊 Statistiques Historiques</h2>
+    <div id="historicalStats">
+        <p>Chargement...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/logs.js"></script>
+{% endblock %}
+

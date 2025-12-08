@@ -1,0 +1,54 @@
+<!-- Template réutilisable pour une carte recherche -->
+<div class="search-card {{ 'active' if search.is_active else 'inactive' }}" data-search-key="{{ search_key }}">
+    <div class="search-header">
+        <input type="checkbox" id="search-{{ search_key }}" {{ 'checked' if is_selected else '' }}
+               onchange="toggleSearch('{{ search_key }}', {{ 'true' if is_selected else 'false' }})">
+        <div class="search-info">
+            <div class="search-name">{{ search.name }}</div>
+            <div class="search-query">{{ search.query }} - {{ search.location }}</div>
+            {% if search.standalone %}
+            <span class="search-badge standalone">🔍 Standalone</span>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="search-details">
+        {% if search.tags %}
+        <div class="search-tags">
+            {% for tag in search.tags %}
+            <span class="tag">{{ tag }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        {% if search.priority %}
+        <div class="search-priority">
+            Priorité: {{ '⭐' * search.priority }}
+        </div>
+        {% endif %}
+        
+        {% if search.salary_min or search.salary_max %}
+        <div class="search-salary">
+            Salaire: 
+            {% if search.salary_min %}{{ search.salary_min }}€{% endif %}
+            {% if search.salary_min and search.salary_max %} - {% endif %}
+            {% if search.salary_max %}{{ search.salary_max }}€{% endif %}
+        </div>
+        {% endif %}
+        
+        {% if search.remote %}
+        <span class="search-badge remote">🏠 Télétravail</span>
+        {% endif %}
+        
+        {% if search.full_time %}
+        <span class="search-badge fulltime">⏰ Temps plein</span>
+        {% endif %}
+    </div>
+    
+    <div class="search-actions">
+        <button class="btn-icon" onclick="showSearchDetail('{{ search_key }}')" title="Voir les détails" style="background: var(--info); color: white;">📊</button>
+        <button class="btn-icon" onclick="editSearch('{{ search_key }}')" title="Modifier" style="background: var(--warning); color: white;">✏️</button>
+        <button class="btn-icon" onclick="deleteSearch('{{ search_key }}')" title="Supprimer" style="background: var(--error); color: white;">🗑️</button>
+    </div>
+</div>
+

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Offres d'emploi - Auto Apply{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>💼 Offres d'Emploi</h2>
+    
+    <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+        <button class="btn" onclick="loadAllJobs()">📋 Toutes les offres</button>
+        <button class="btn" onclick="loadUnappliedJobs()">🔍 Non candidatées</button>
+    </div>
+    
+    <div class="form-group">
+        <label>Recherche</label>
+        <input type="text" id="jobsSearchQuery" value="développeur python" placeholder="Mots-clés">
+    </div>
+    <div class="form-group">
+        <label>Localisation</label>
+        <input type="text" id="jobsSearchLocation" value="Rennes" placeholder="Ville ou région">
+    </div>
+    <button class="btn btn-primary" onclick="scrapeJobs()">🔍 Rechercher</button>
+    
+    <div style="margin-top: 20px;">
+        <p><strong>Total: <span id="jobsCount">0</span> offres</strong></p>
+    </div>
+    
+    <div id="jobsList" style="margin-top: 20px;">
+        <p>Aucune offre chargée</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/jobs.js"></script>
+{% endblock %}
+

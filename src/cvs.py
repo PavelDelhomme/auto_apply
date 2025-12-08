@@ -3,11 +3,11 @@ from jinja2 import Template
 import pdfkit
 
 # Chargement des données depuis le fichier JSON
-with open('cvs.json', 'r') as file:
+with open('config/cvs.json', 'r') as file:
     cvs_data = json.load(file)
 
-# Charger le motdèle HTML
-with open('cv_template.html', 'r') as file:
+# Charger le modèle HTML
+with open('templates/cv/cv_template.html', 'r') as file:
     template_content = file.read()
 
 # Créer un rendu HTML pour chaque CV

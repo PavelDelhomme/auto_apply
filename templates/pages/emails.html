@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Gestion Emails - Auto Apply{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>📧 Gestion des Emails des Personas</h2>
+    <div id="emailsPersonasList">
+        <p>Chargement des personas...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/emails.js"></script>
+{% endblock %}
+

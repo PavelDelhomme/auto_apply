@@ -5,8 +5,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 import time
 import os
+from .platform_handlers import detect_platform, PLATFORM_HANDLERS
 
-def apply_to_job(job, persona_email, persona_name, cv_path, cover_letter=None, headless=False):
+def apply_to_job(job, persona_email, persona_name, cv_path, cover_letter=None, headless=False, platform=None):
     """
     Automatisation de la candidature à une offre via Selenium.
     :param job: Dictionnaire contenant les informations sur l'offre (id, title, company, location, url).
@@ -53,114 +54,24 @@ def apply_to_job(job, persona_email, persona_name, cv_path, cover_letter=None, h
         print(f"Offre: {job['title']} chez {job['company']} - {job['location']}")
         print(f"URL: {job_url}")
         
+        # Détecter la plateforme si non spécifiée
+        if not platform:
+            platform = detect_platform(job_url)
+        
+        print(f"Plateforme détectée: {platform}")
+        
         driver.get(job_url)
         time.sleep(3)  # Attendre le chargement de la page
         
-        # Chercher le bouton de candidature (plusieurs sélecteurs possibles)
-        apply_button = None
-        selectors = [
-            (By.CLASS_NAME, 'apply-button'),
-            (By.ID, 'applyButton'),
-            (By.XPATH, "//button[contains(text(), 'Postuler')]"),
-            (By.XPATH, "//a[contains(text(), 'Postuler')]"),
-            (By.XPATH, "//button[contains(text(), 'Apply')]"),
-            (By.XPATH, "//a[contains(text(), 'Apply')]"),
-        ]
+        # Utiliser le gestionnaire spécifique à la plateforme
+        handler = PLATFORM_HANDLERS.get(platform, PLATFORM_HANDLERS['other'])
+        success, message = handler(driver, job, persona_name, persona_email, cv_path, cover_letter)
         
-        for selector_type, selector_value in selectors:
-            try:
-                apply_button = WebDriverWait(driver, 5).until(
-                    EC.element_to_be_clickable((selector_type, selector_value))
-                )
-                break
-            except TimeoutException:
-                continue
-        
-        if not apply_button:
-            print("Bouton de candidature non trouvé. La structure de la page a peut-être changé.")
-            return False
-        
-        apply_button.click()
-        time.sleep(2)
-        
-        # Remplir le formulaire de candidature
-        # Upload du CV
-        try:
-            cv_upload_selectors = [
-                (By.ID, 'cv-upload'),
-                (By.NAME, 'cv'),
-                (By.XPATH, "//input[@type='file']"),
-            ]
-            
-            cv_upload = None
-            for selector_type, selector_value in cv_upload_selectors:
-                try:
-                    cv_upload = driver.find_element(selector_type, selector_value)
-                    break
-                except NoSuchElementException:
-                    continue
-            
-            if cv_upload:
-                absolute_cv_path = os.path.abspath(cv_path)
-                cv_upload.send_keys(absolute_cv_path)
-                print("CV uploadé avec succès")
-                time.sleep(1)
-        except Exception as e:
-            print(f"Attention: Impossible d'uploader le CV automatiquement: {e}")
-        
-        # Remplir la lettre de motivation si fournie
-        if cover_letter:
-            try:
-                cover_letter_selectors = [
-                    (By.ID, 'cover-letter'),
-                    (By.NAME, 'cover-letter'),
-                    (By.TAG_NAME, 'textarea'),
-                ]
-                
-                cover_letter_field = None
-                for selector_type, selector_value in cover_letter_selectors:
-                    try:
-                        cover_letter_field = driver.find_element(selector_type, selector_value)
-                        break
-                    except NoSuchElementException:
-                        continue
-                
-                if cover_letter_field:
-                    cover_letter_field.clear()
-                    cover_letter_field.send_keys(cover_letter)
-                    print("Lettre de motivation remplie")
-                    time.sleep(1)
-            except Exception as e:
-                print(f"Attention: Impossible de remplir la lettre de motivation: {e}")
-        
-        # Soumettre le formulaire
-        try:
-            submit_selectors = [
-                (By.CLASS_NAME, 'submit-button'),
-                (By.ID, 'submit'),
-                (By.XPATH, "//button[@type='submit']"),
-                (By.XPATH, "//button[contains(text(), 'Envoyer')]"),
-                (By.XPATH, "//button[contains(text(), 'Submit')]"),
-            ]
-            
-            submit_button = None
-            for selector_type, selector_value in submit_selectors:
-                try:
-                    submit_button = driver.find_element(selector_type, selector_value)
-                    break
-                except NoSuchElementException:
-                    continue
-            
-            if submit_button:
-                submit_button.click()
-                print(f"✅ Candidature envoyée avec succès pour {job['title']} chez {job['company']}")
-                time.sleep(2)
-                return True
-            else:
-                print("Bouton de soumission non trouvé. La candidature n'a peut-être pas été envoyée.")
-                return False
-        except Exception as e:
-            print(f"Erreur lors de la soumission: {e}")
+        if success:
+            print(f"✅ {message}")
+            return True
+        else:
+            print(f"❌ {message}")
             return False
         
     except Exception as e:

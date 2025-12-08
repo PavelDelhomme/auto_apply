@@ -8,7 +8,7 @@ from stats import get_statistics
 from cv_generator import generate_cvs_from_json
 from application_generator import generate_cover_letter
 
-def load_personas(personas_file="personas.json"):
+def load_personas(personas_file="config/personas.json"):
     """Charge les personas depuis le fichier JSON."""
     with open(personas_file, 'r', encoding='utf-8') as file:
         return json.load(file)

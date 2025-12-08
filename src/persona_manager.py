@@ -9,7 +9,7 @@ import random
 import string
 
 class PersonaManager:
-    def __init__(self, personas_file="/app/personas.json"):
+    def __init__(self, personas_file="/app/config/personas.json"):
         self.personas_file = personas_file
         self.personas = self.load_personas()
     
@@ -38,10 +38,30 @@ class PersonaManager:
         """Récupère un persona par sa clé."""
         return self.personas.get(persona_key)
     
+    def get_persona_by_email(self, email: str) -> Optional[Dict]:
+        """Récupère un persona par son email."""
+        for persona in self.personas.values():
+            if persona.get('email') == email:
+                return persona
+        return None
+    
     def create_persona(self, name: str, email: str, password: str = "", 
                       alias: bool = False, parent: Optional[str] = None,
-                      custom_data: Optional[Dict] = None) -> str:
-        """Crée un nouveau persona."""
+                      custom_data: Optional[Dict] = None,
+                      # Nouveaux champs détaillés
+                      skills: Optional[List[str]] = None,
+                      experience_years: Optional[int] = None,
+                      education: Optional[List[Dict]] = None,
+                      languages: Optional[List[str]] = None,
+                      location: Optional[str] = None,
+                      phone: Optional[str] = None,
+                      linkedin: Optional[str] = None,
+                      github: Optional[str] = None,
+                      portfolio: Optional[str] = None,
+                      notes: Optional[str] = None,
+                      # Configuration email
+                      email_config: Optional[Dict] = None) -> str:
+        """Crée un nouveau persona avec des détails complets."""
         # Générer une clé unique
         persona_key = f"persona{len(self.personas) + 1}"
         while persona_key in self.personas:
@@ -52,7 +72,20 @@ class PersonaManager:
             "email": email,
             "password": password,
             "alias": alias,
-            "parent": parent
+            "parent": parent,
+            # Nouveaux champs détaillés
+            "skills": skills or [],
+            "experience_years": experience_years,
+            "education": education or [],
+            "languages": languages or [],
+            "location": location,
+            "phone": phone,
+            "linkedin": linkedin,
+            "github": github,
+            "portfolio": portfolio,
+            "notes": notes,
+            # Configuration email personnalisée
+            "email_config": email_config or {}
         }
         
         if custom_data:

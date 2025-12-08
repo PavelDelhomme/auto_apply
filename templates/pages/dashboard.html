@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Auto Apply{% endblock %}
+
+{% block content %}
+<div class="grid">
+    <div class="card">
+        <h2>📊 Statistiques Globales</h2>
+        <div class="stat-value" id="totalJobs">0</div>
+        <div class="stat-label">Offres trouvées</div>
+        <div class="stat-value" id="totalApplications">0</div>
+        <div class="stat-label">Candidatures totales</div>
+        <div class="stat-value" id="sentApplications">0</div>
+        <div class="stat-label">✅ Envoyées</div>
+        <div class="stat-value" id="failedApplications">0</div>
+        <div class="stat-label">❌ Échouées</div>
+    </div>
+    
+    <div class="card">
+        <h2>⚡ Session Actuelle</h2>
+        <div class="stat-value" id="jobsFound">0</div>
+        <div class="stat-label">Offres trouvées</div>
+        <div class="stat-value" id="applicationsSent">0</div>
+        <div class="stat-label">Candidatures envoyées</div>
+        <div class="stat-value" id="applicationsFailed">0</div>
+        <div class="stat-label">Candidatures échouées</div>
+    </div>
+</div>
+
+<!-- Section Contrôles supprimée - Utilisez le menu FAB à droite -->
+
+<div class="card">
+    <h2>🔍 Recherches Actives</h2>
+    <div id="activeSearchesContainer">
+        <p style="color: var(--text-secondary);">Chargement...</p>
+    </div>
+</div>
+
+<div class="card">
+    <h2>📋 Logs en temps réel</h2>
+    <div class="logs-container" id="logsContainer">
+        <div class="log-entry">
+            <span class="log-timestamp">--:--:--</span>
+            <span class="log-level info">INFO</span>
+            <span>En attente de connexion...</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Modal Auto Apply -->
+<div class="modal" id="autoApplyModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 style="color: var(--text-title);">🚀 Lancer la Candidature Automatique</h2>
+            <button class="modal-close" onclick="closeAutoApplyModal()">✕</button>
+        </div>
+        
+        <div class="form-group">
+            <label>Recherche d'emploi</label>
+            <input type="text" id="modalQuery" value="développeur python" placeholder="Mots-clés">
+        </div>
+        
+        <div class="form-group">
+            <label>Localisation</label>
+            <input type="text" id="modalLocation" value="Rennes" placeholder="Ville ou région">
+        </div>
+        
+        <div class="form-group">
+            <label>Personas sélectionnés (<span id="modalPersonasCount">0</span>)</label>
+            <div id="modalPersonasList" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); padding: 10px; border-radius: 5px; background: var(--bg-card);">
+                Chargement...
+            </div>
+        </div>
+        
+        <div class="btn-group" style="margin-top: 20px;">
+            <button class="btn btn-primary" onclick="startAutoApplyFromModal()">🚀 Démarrer</button>
+            <button class="btn" onclick="closeAutoApplyModal()">Annuler</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Test Application -->
+<div class="modal" id="testApplicationModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 style="color: var(--text-title);">🧪 Tester une Candidature</h2>
+            <button class="modal-close" onclick="closeTestApplicationModal()">✕</button>
+        </div>
+        
+        <div class="form-group">
+            <label>Plateforme</label>
+            <select id="testPlatform" required>
+                <option value="">Sélectionner une plateforme</option>
+                <option value="indeed">Indeed</option>
+                <option value="linkedin">LinkedIn</option>
+                <option value="welcometothejungle">Welcome to the Jungle</option>
+                <option value="hellowork">HelloWork</option>
+                <option value="apec">APEC</option>
+                <option value="other">Autre</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>URL de l'offre d'emploi</label>
+            <input type="url" id="testJobUrl" required placeholder="https://...">
+            <small style="color: var(--text-secondary);">URL complète de l'offre à tester</small>
+        </div>
+        
+        <div class="form-group">
+            <label>Persona</label>
+            <select id="testPersona" required>
+                <option value="">Chargement...</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="testUseCoverLetter" checked>
+                Utiliser une lettre de motivation
+            </label>
+        </div>
+        
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="testDryRun">
+                Mode test (dry run) - Ne pas envoyer réellement
+            </label>
+        </div>
+        
+        <div class="btn-group" style="margin-top: 20px;">
+            <button class="btn btn-primary" onclick="startTestApplication()">🧪 Tester</button>
+            <button class="btn" onclick="closeTestApplicationModal()">Annuler</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}
+

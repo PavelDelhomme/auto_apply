@@ -21,14 +21,14 @@ APPLICATION_CONFIG = {
 
 # Configuration des CVs
 CV_CONFIG = {
-    "template_file": "cv_template.html",
+    "template_file": "templates/cv/cv_template.html",
     "output_dir": "cvs",
-    "cvs_file": "cvs.json",
+    "cvs_file": "config/cvs.json",
 }
 
 # Configuration des personas
 PERSONAS_CONFIG = {
-    "personas_file": "personas.json",
+    "personas_file": "config/personas.json",
 }
 
 # Configuration de la base de données

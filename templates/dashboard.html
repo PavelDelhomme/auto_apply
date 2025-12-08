@@ -6,6 +6,9 @@
     <title>Auto Apply - Dashboard</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/components.css">
+    <script src="/static/js/components.js"></script>
     <style>
         * {
             margin: 0;
@@ -908,6 +911,44 @@
                 margin-left: 0;
             }
         }
+        
+        /* Animations pour les cartes de recherche */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .search-card-ultra-modern {
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        .search-card-ultra-modern:hover {
+            transform: translateY(-4px) !important;
+        }
+        
+        .search-card-ultra-modern.selected {
+            border-color: var(--text-title) !important;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.25), 0 0 0 1px rgba(102, 126, 234, 0.1) !important;
+        }
+        
+        @media (max-width: 768px) {
+            #searchesList {
+                grid-template-columns: 1fr !important;
+                gap: 16px !important;
+                padding: 10px !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -940,6 +981,10 @@
                 <div class="drawer-item" onclick="showSection('jobs')">
                     <span class="drawer-item-icon">💼</span>
                     <span>Offres d'emploi</span>
+                </div>
+                <div class="drawer-item" onclick="showSection('emails')">
+                    <span class="drawer-item-icon">📧</span>
+                    <span>Gestion Emails</span>
                 </div>
                 <div class="drawer-item" onclick="showSection('settings')">
                     <span class="drawer-item-icon">⚙️</span>
@@ -1048,7 +1093,15 @@
                     <button class="btn btn-success" onclick="generateCVs()">📄 Générer les CVs</button>
                     <button class="btn btn-primary" onclick="scrapeJobs()">🔍 Rechercher des offres</button>
                     <button class="btn btn-primary" onclick="showAutoApplyModal()">🚀 Lancer Auto Apply</button>
+                    <button class="btn btn-info" onclick="showTestApplicationModal()">🧪 Tester Candidature</button>
                     <button class="btn btn-danger" onclick="stopAutoApply()" id="stopBtn" disabled>⏹️ Arrêter</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>🔍 Recherches Actives</h2>
+                <div id="activeSearchesContainer" style="margin-top: 15px;">
+                    <p style="color: var(--text-secondary);">Chargement...</p>
                 </div>
             </div>
         </div>
@@ -1098,11 +1151,11 @@
                 <h2>💼 Offres d'Emploi</h2>
                 <div class="form-group">
                     <label>Recherche</label>
-                    <input type="text" id="searchQuery" value="développeur python" placeholder="Mots-clés">
+                    <input type="text" id="jobsSearchQuery" value="développeur python" placeholder="Mots-clés">
                 </div>
                 <div class="form-group">
                     <label>Localisation</label>
-                    <input type="text" id="searchLocation" value="Rennes" placeholder="Ville ou région">
+                    <input type="text" id="jobsSearchLocation" value="Rennes" placeholder="Ville ou région">
                 </div>
                 <button class="btn btn-primary" onclick="scrapeJobs()">🔍 Rechercher</button>
                 <div id="jobsList" style="margin-top: 20px;">
@@ -1122,11 +1175,22 @@
                 <div class="searches-filter-buttons">
                     <button class="btn" onclick="loadAllSearches()">📋 Toutes les recherches</button>
                     <button class="btn" onclick="loadEnabledSearches()">✅ Recherches activées</button>
+                    <button class="btn" onclick="selectAllSearches()">✅ Sélectionner tout</button>
+                    <button class="btn" onclick="deselectAllSearches()">❌ Désélectionner tout</button>
+                    <button class="btn" onclick="toggleAllSearchesEnabled()" style="background: var(--warning); color: white;">
+                        🔄 Activer/Désactiver sélectionnées
+                    </button>
                     <button class="btn btn-success" onclick="showRunMultipleModal()">🚀 Lancer plusieurs recherches</button>
+                    <span id="selectedSearchesCount" style="color: var(--text-title); font-weight: 600; padding: 8px 12px; background: var(--border-color); border-radius: 5px; margin-left: auto;">
+                        0 sélectionnée(s)
+                    </span>
                 </div>
                 
-                <div id="searchesList">
-                    <p>Chargement des recherches...</p>
+                <div id="searchesList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(500px, 1fr)); gap: 24px; padding: 20px;">
+                    <div style="text-align: center; padding: 40px; color: var(--text-secondary); grid-column: 1 / -1;">
+                        <div style="font-size: 3em; margin-bottom: 15px; animation: pulse 2s infinite;">⏳</div>
+                        <p>Chargement des recherches...</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1135,6 +1199,61 @@
         <div id="section-settings" class="content-section">
             <div class="card">
                 <h2>⚙️ Paramètres</h2>
+                
+                <!-- Interface pour lancer plusieurs recherches avec personas -->
+                <h3 style="color: var(--text-title); margin-top: 30px; margin-bottom: 15px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">🚀 Lancer plusieurs recherches avec personas</h3>
+                
+                <div class="form-group">
+                    <label>Recherches à lancer</label>
+                    <p style="font-size: 0.85em; color: var(--text-secondary); margin-bottom: 10px;">
+                        Sélectionnez les recherches que vous souhaitez lancer simultanément. Chaque recherche utilisera ses personas assignés ou les personas sélectionnés ci-dessous.
+                    </p>
+                    <div id="settingsSearchesList" style="max-height: 300px; overflow-y: auto; border: 2px solid var(--border-color); padding: 15px; border-radius: 8px; background: var(--bg-card);">
+                        <p style="text-align: center; color: var(--text-secondary);">Chargement des recherches...</p>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Personas à utiliser (optionnel)</label>
+                    <p style="font-size: 0.85em; color: var(--text-secondary); margin-bottom: 10px;">
+                        Si des personas sont sélectionnés ici, ils seront utilisés pour toutes les recherches (sauf si une recherche a des personas spécifiques assignés). Si aucun n'est sélectionné, chaque recherche utilisera ses propres personas assignés ou tous les personas disponibles.
+                    </p>
+                    <div id="settingsPersonasList" style="max-height: 200px; overflow-y: auto; border: 2px solid var(--border-color); padding: 15px; border-radius: 8px; background: var(--bg-card); margin-bottom: 10px;">
+                        <p style="text-align: center; color: var(--text-secondary); font-size: 0.9em;">Aucun persona sélectionné (chaque recherche utilisera ses propres personas)</p>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="showSettingsPersonaSelector()" style="width: 100%;">👥 Sélectionner des personas</button>
+                </div>
+                
+                <div class="form-group">
+                    <label>Nombre maximum de candidatures par persona</label>
+                    <input type="number" id="settingsMaxPerPersona" min="1" max="20" value="3" style="max-width: 200px;">
+                </div>
+                
+                <div class="form-group">
+                    <label>Délai entre candidatures</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="number" id="settingsDelayMin" min="1" max="60" value="5" placeholder="Min" style="max-width: 100px;">
+                        <span>à</span>
+                        <input type="number" id="settingsDelayMax" min="1" max="60" value="10" placeholder="Max" style="max-width: 100px;">
+                        <span>secondes</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="settingsUseCoverLetter" checked>
+                        Utiliser les lettres de motivation
+                    </label>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="startMultipleSearchesFromSettings()">🚀 Lancer les recherches</button>
+                    <button class="btn" onclick="clearSettingsSelections()">🗑️ Effacer la sélection</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>⚙️ Paramètres Généraux</h2>
                 
                 <h3 style="margin-top: 20px; color: var(--text-title);">Recherche</h3>
                 <div class="form-group">
@@ -1369,6 +1488,42 @@
                         Recherche activée
                     </label>
                 </div>
+                
+                <!-- Section Personas pour cette recherche -->
+                <h3 style="color: var(--text-title); margin-top: 30px; margin-bottom: 15px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">👥 Personas pour cette recherche</h3>
+                
+                <div class="form-group">
+                    <label>Personas assignés à cette recherche</label>
+                    <p style="font-size: 0.85em; color: var(--text-secondary); margin-bottom: 10px;">
+                        Si des personas sont assignés, seuls ceux-là seront utilisés pour cette recherche. Si aucun n'est assigné, tous les personas disponibles seront utilisés.
+                    </p>
+                    <div id="searchPersonasAssigned" style="min-height: 50px; max-height: 150px; overflow-y: auto; border: 2px solid var(--border-color); padding: 10px; border-radius: 8px; background: var(--bg-card); margin-bottom: 10px;">
+                        <p style="text-align: center; color: var(--text-secondary); font-size: 0.9em;">Aucun persona assigné (tous les personas seront utilisés)</p>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="showPersonaSelector('assigned')" style="width: 100%;">👥 Sélectionner des personas assignés</button>
+                </div>
+                
+                <div class="form-group">
+                    <label>Personas à exclure de cette recherche</label>
+                    <p style="font-size: 0.85em; color: var(--text-secondary); margin-bottom: 10px;">
+                        Les personas sélectionnés ici ne seront pas utilisés pour cette recherche, même s'ils sont assignés globalement.
+                    </p>
+                    <div id="searchPersonasExcluded" style="min-height: 50px; max-height: 150px; overflow-y: auto; border: 2px solid var(--border-color); padding: 10px; border-radius: 8px; background: var(--bg-card); margin-bottom: 10px;">
+                        <p style="text-align: center; color: var(--text-secondary); font-size: 0.9em;">Aucun persona exclu</p>
+                    </div>
+                    <button type="button" class="btn btn-warning" onclick="showPersonaSelector('excluded')" style="width: 100%;">🚫 Sélectionner des personas à exclure</button>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="searchStandalone">
+                        🔍 Recherche standalone (scraper uniquement, sans personas)
+                    </label>
+                    <small style="color: var(--text-secondary); display: block; margin-top: 5px;">
+                        Si coché, cette recherche ne postulera pas avec des personas, elle ne fera que scraper et enregistrer les offres.
+                    </small>
+                </div>
+                
                 <div class="btn-group">
                     <button type="submit" class="btn btn-primary">Enregistrer</button>
                     <button type="button" class="btn" onclick="closeSearchModal()">Annuler</button>
@@ -1421,12 +1576,76 @@
         </div>
     </div>
     
+    <!-- Modal Test Candidature -->
+    <div class="modal" id="testApplicationModal">
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h2>🧪 Tester une Candidature</h2>
+                <button class="modal-close" onclick="closeTestApplicationModal()">✕</button>
+            </div>
+            <div class="form-group">
+                <label>Plateforme</label>
+                <select id="testPlatform" required>
+                    <option value="">Sélectionner une plateforme</option>
+                    <option value="indeed">Indeed</option>
+                    <option value="linkedin">LinkedIn</option>
+                    <option value="welcometothejungle">Welcome to the Jungle</option>
+                    <option value="hellowork">HelloWork</option>
+                    <option value="apec">APEC</option>
+                    <option value="other">Autre</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>URL de l'offre d'emploi</label>
+                <input type="url" id="testJobUrl" required placeholder="https://...">
+                <small style="color: var(--text-secondary);">URL complète de l'offre à tester</small>
+            </div>
+            <div class="form-group">
+                <label>Persona</label>
+                <select id="testPersona" required>
+                    <option value="">Chargement...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="testUseCoverLetter" checked>
+                    Utiliser une lettre de motivation
+                </label>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="testHeadless">
+                    Mode headless (sans interface graphique)
+                </label>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="testDryRun" checked>
+                    Mode test (ne pas envoyer réellement)
+                </label>
+                <small style="color: var(--text-secondary);">Si coché, le système testera la candidature sans l'envoyer réellement</small>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="startTestApplication()">🧪 Tester</button>
+                <button class="btn" onclick="closeTestApplicationModal()">Annuler</button>
+            </div>
+            <div id="testApplicationResult" style="margin-top: 20px; padding: 15px; border-radius: 8px; display: none;"></div>
+        </div>
+    </div>
+    
     <script>
         const socket = io();
         let isRunning = false;
         let allPersonas = {};
         let selectedPersonas = new Set();
         let currentSection = 'dashboard';
+        let allSearches = {};
+        let selectedSearches = new Set();
+        let currentSearchKey = null;
+        let searchAssignedPersonas = new Set();
+        let searchExcludedPersonas = new Set();
+        let settingsSelectedSearches = new Set();
+        let settingsSelectedPersonas = new Set();
         
         // Gestion du drawer
         function toggleDrawer() {
@@ -1479,6 +1698,22 @@
                 loadJobs();
             } else if (sectionName === 'searches') {
                 loadAllSearches();
+            } else if (sectionName === 'logs') {
+                setTimeout(() => {
+                    loadHistoricalLogs();
+                    loadHistoricalStats();
+                }, 100);
+            } else if (sectionName === 'settings') {
+                loadSettingsSearches();
+                loadPersonas().then(() => {
+                    updatePersonasDisplay('default', settingsSelectedPersonas);
+                });
+            } else if (sectionName === 'dashboard') {
+                loadPersonas().then(() => {
+                    loadActiveSearches();
+                });
+            } else if (sectionName === 'emails') {
+                loadEmailsPersonas();
             }
             
             // Fermer le drawer sur mobile
@@ -1835,6 +2070,16 @@
                     <div class="modal-header">
                         <h2>📧 Emails de ${personaName}</h2>
                         <button class="modal-close" onclick="closeEmailsModal()">✕</button>
+                    </div>
+                    <div style="padding: 10px; border-bottom: 2px solid var(--border-color); margin-bottom: 10px;">
+                        <button class="btn btn-sm btn-info" onclick="parseEmails('${personaEmail}')" style="width: 100%;">
+                            📊 Analyser les emails de candidatures
+                        </button>
+                    </div>
+                    <div style="padding: 10px; border-bottom: 2px solid var(--border-color); margin-bottom: 10px;">
+                        <button class="btn btn-sm btn-info" onclick="parseEmails('${personaEmail}')" style="width: 100%;">
+                            📊 Analyser les emails de candidatures
+                        </button>
                     </div>
                     <div id="emailsList" style="max-height: 500px; overflow-y: auto; padding: 10px;">
                         <p>Chargement des emails...</p>
@@ -2431,8 +2676,11 @@
         }
         
         async function scrapeJobs() {
-            const query = document.getElementById('searchQuery').value;
-            const location = document.getElementById('searchLocation').value;
+            // Chercher dans la section jobs d'abord, puis dans le modal de recherche
+            const queryInput = document.getElementById('jobsSearchQuery') || document.getElementById('searchQuery');
+            const locationInput = document.getElementById('jobsSearchLocation') || document.getElementById('searchLocation');
+            const query = queryInput ? queryInput.value : '';
+            const location = locationInput ? locationInput.value : '';
             
             try {
                 const response = await fetch('/api/scrape_jobs', {
@@ -2687,11 +2935,7 @@
             }
         }
         
-        // Gestion des recherches
-        let allSearches = {};
-        let selectedSearches = new Set();
-        let currentSearchKey = null;
-        
+        // Gestion des recherches (variables déjà déclarées plus haut)
         async function loadAllSearches() {
             try {
                 const response = await fetch('/api/searches');
@@ -2700,6 +2944,86 @@
                 addLog('Recherches chargées', 'info');
             } catch (error) {
                 addLog(`Erreur chargement recherches: ${error.message}`, 'error');
+            }
+        }
+        
+        async function loadActiveSearches() {
+            try {
+                const response = await fetch('/api/searches/enabled');
+                if (!response.ok) return;
+                
+                const searches = await response.json();
+                const container = document.getElementById('activeSearchesContainer');
+                if (!container) return;
+                
+                const searchKeys = Object.keys(searches);
+                if (searchKeys.length === 0) {
+                    container.innerHTML = '<p style="color: var(--text-secondary);">Aucune recherche active</p>';
+                    return;
+                }
+                
+                let html = '<div style="display: flex; flex-direction: column; gap: 15px;">';
+                
+                for (const key of searchKeys) {
+                    const search = searches[key];
+                    const assignedPersonas = search.personas_assigned || [];
+                    const excludedPersonas = search.personas_excluded || [];
+                    const isStandalone = search.standalone || false;
+                    
+                    html += `
+                        <div style="border: 2px solid var(--border-color); border-radius: 8px; padding: 15px; background: var(--bg-card);">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                                <div>
+                                    <h3 style="margin: 0; color: var(--text-title); font-size: 1.1em;">${search.name || key}</h3>
+                                    <p style="margin: 5px 0 0 0; color: var(--text-secondary); font-size: 0.9em;">
+                                        ${search.query || ''} ${search.location ? 'à ' + search.location : ''}
+                                    </p>
+                                </div>
+                                <div style="display: flex; gap: 5px;">
+                                    ${isStandalone ? '<span style="background: var(--info); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em;">🔍 Standalone</span>' : ''}
+                                    <span style="background: var(--success); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em;">✅ Active</span>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-top: 10px;">
+                                ${assignedPersonas.length > 0 ? `
+                                    <div style="margin-bottom: 8px;">
+                                        <strong style="color: var(--text-title); font-size: 0.9em;">👥 Personas assignés (${assignedPersonas.length}):</strong>
+                                        <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px;">
+                                            ${assignedPersonas.map(email => {
+                                                const persona = allPersonas[Object.keys(allPersonas).find(k => allPersonas[k].email === email)];
+                                                const name = persona ? persona.name : email;
+                                                return `<span style="background: var(--success); color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.85em;">${name}</span>`;
+                                            }).join('')}
+                                        </div>
+                                    </div>
+                                ` : '<p style="color: var(--text-secondary); font-size: 0.85em; margin-bottom: 8px;">👥 Tous les personas disponibles</p>'}
+                                
+                                ${excludedPersonas.length > 0 ? `
+                                    <div>
+                                        <strong style="color: var(--text-title); font-size: 0.9em;">🚫 Personas exclus (${excludedPersonas.length}):</strong>
+                                        <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px;">
+                                            ${excludedPersonas.map(email => {
+                                                const persona = allPersonas[Object.keys(allPersonas).find(k => allPersonas[k].email === email)];
+                                                const name = persona ? persona.name : email;
+                                                return `<span style="background: var(--error); color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.85em;">${name}</span>`;
+                                            }).join('')}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+                container.innerHTML = html;
+            } catch (error) {
+                console.error('Erreur chargement recherches actives:', error);
+                const container = document.getElementById('activeSearchesContainer');
+                if (container) {
+                    container.innerHTML = '<p style="color: var(--error);">Erreur lors du chargement</p>';
+                }
             }
         }
         
@@ -2724,35 +3048,355 @@
             let html = '';
             
             if (!allSearches || Object.keys(allSearches).length === 0) {
-                container.innerHTML = '<p style="text-align: center; padding: 20px; color: var(--text-secondary);">Aucune recherche trouvée</p>';
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px; color: var(--text-secondary); grid-column: 1 / -1;">
+                        <div style="font-size: 4em; margin-bottom: 20px;">🔍</div>
+                        <h3 style="color: var(--text-primary); margin-bottom: 10px;">Aucune recherche trouvée</h3>
+                        <p>Créez votre première recherche pour commencer</p>
+                    </div>
+                `;
                 return;
             }
             
             for (const [key, search] of Object.entries(allSearches)) {
                 const isSelected = selectedSearches.has(key);
                 const isEnabled = search.enabled !== false;
+                const personasAssigned = search.personas_assigned || [];
+                const personasExcluded = search.personas_excluded || [];
+                const history = search.history || [];
+                const lastRun = history.length > 0 ? history[history.length - 1] : null;
+                const gradientColor = isEnabled ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)';
                 
                 html += `
-                    <div class="persona-item" style="position: relative;">
-                        <input type="checkbox" id="search-${key}" ${isSelected ? 'checked' : ''} 
-                               onchange="toggleSearch('${key}', ${isSelected})">
-                        <div class="persona-info" style="flex: 1;">
-                            <div class="persona-name">
-                                ${search.name}
-                                ${isEnabled ? '<span class="persona-badge" style="background: var(--success);">Activée</span>' : '<span class="persona-badge" style="background: var(--error);">Désactivée</span>'}
+                    <div class="search-card-ultra-modern ${isSelected ? 'selected' : ''}" style="
+                        background: ${isSelected ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)' : 'var(--bg-card)'};
+                        border: 2px solid ${isSelected ? 'var(--text-title)' : (isEnabled ? 'rgba(16, 185, 129, 0.3)' : 'var(--border-color)')};
+                        border-radius: 16px;
+                        padding: 0;
+                        margin-bottom: 20px;
+                        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                        box-shadow: ${isSelected ? '0 8px 24px rgba(102, 126, 234, 0.25), 0 0 0 1px rgba(102, 126, 234, 0.1)' : '0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04)'};
+                        position: relative;
+                        overflow: hidden;
+                        cursor: pointer;
+                    " onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 32px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08)'" 
+                       onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='${isSelected ? '0 8px 24px rgba(102, 126, 234, 0.25), 0 0 0 1px rgba(102, 126, 234, 0.1)' : '0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04)'}'">
+                        
+                        <!-- Header avec gradient -->
+                        <div style="
+                            background: ${gradientColor};
+                            padding: 20px 24px;
+                            color: white;
+                            position: relative;
+                            overflow: hidden;
+                        ">
+                            <div style="position: absolute; top: -50%; right: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); pointer-events: none;"></div>
+                            
+                            <div style="display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 1;">
+                                <div style="display: flex; align-items: center; gap: 15px; flex: 1;">
+                                    <input type="checkbox" id="search-${key}" ${isSelected ? 'checked' : ''} 
+                                           onchange="event.stopPropagation(); toggleSearch('${key}', ${isSelected})"
+                                           style="width: 22px; height: 22px; cursor: pointer; accent-color: white;"
+                                           onclick="event.stopPropagation();">
+                                    
+                                    <div style="flex: 1; min-width: 0;">
+                                        <h3 style="margin: 0 0 8px 0; color: white; font-size: 1.4em; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                                            ${search.name || 'Sans nom'}
+                                        </h3>
+                                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                            <span style="
+                                                background: rgba(255,255,255,0.25);
+                                                backdrop-filter: blur(10px);
+                                                color: white;
+                                                padding: 6px 14px;
+                                                border-radius: 20px;
+                                                font-size: 0.8em;
+                                                font-weight: 600;
+                                                border: 1px solid rgba(255,255,255,0.3);
+                                            ">${isEnabled ? '✓ Activée' : '✗ Désactivée'}</span>
+                                            ${search.standalone ? `
+                                                <span style="
+                                                    background: rgba(255,255,255,0.2);
+                                                    backdrop-filter: blur(10px);
+                                                    color: white;
+                                                    padding: 6px 14px;
+                                                    border-radius: 20px;
+                                                    font-size: 0.8em;
+                                                    font-weight: 600;
+                                                    border: 1px solid rgba(255,255,255,0.3);
+                                                ">🔍 Standalone</span>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="persona-email">${search.query} - ${search.location}</div>
-                            <small style="color: var(--text-secondary);">
-                                Type: ${search.job_type || 'N/A'} | 
-                                Max: ${search.max_results || 50} résultats
-                                ${search.run_count ? ` | Exécutée ${search.run_count} fois` : ''}
-                            </small>
-                            ${search.description ? `<div style="margin-top: 5px; color: var(--text-secondary); font-size: 0.9em;">${search.description}</div>` : ''}
                         </div>
-                        <div style="display: flex; gap: 5px; margin-left: 10px;">
-                            <button class="btn" style="padding: 5px 10px; font-size: 0.85em;" onclick="editSearch('${key}')" title="Modifier">✏️</button>
-                            <button class="btn" style="padding: 5px 10px; font-size: 0.85em;" onclick="duplicateSearch('${key}')" title="Dupliquer">📋</button>
-                            <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.85em;" onclick="deleteSearch('${key}')" title="Supprimer">🗑️</button>
+                        
+                        <!-- Contenu principal -->
+                        <div style="padding: 24px;">
+                            <!-- Requête et localisation -->
+                            <div style="margin-bottom: 20px;">
+                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 12px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%); border-radius: 12px; border-left: 4px solid var(--text-title);">
+                                    <div style="
+                                        width: 40px;
+                                        height: 40px;
+                                        background: var(--text-title);
+                                        border-radius: 10px;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        font-size: 1.2em;
+                                        flex-shrink: 0;
+                                    ">🔍</div>
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="color: var(--text-secondary); font-size: 0.85em; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Recherche</div>
+                                        <div style="color: var(--text-primary); font-size: 1.1em; font-weight: 600;">${search.query || 'N/A'}</div>
+                                    </div>
+                                </div>
+                                
+                                <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.08) 100%); border-radius: 12px; border-left: 4px solid var(--success);">
+                                    <div style="
+                                        width: 40px;
+                                        height: 40px;
+                                        background: var(--success);
+                                        border-radius: 10px;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        font-size: 1.2em;
+                                        flex-shrink: 0;
+                                    ">📍</div>
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="color: var(--text-secondary); font-size: 0.85em; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Localisation</div>
+                                        <div style="color: var(--text-primary); font-size: 1.1em; font-weight: 600;">${search.location || 'N/A'}</div>
+                                    </div>
+                                </div>
+                                
+                                ${search.description ? `
+                                    <div style="margin-top: 12px; padding: 14px; background: var(--border-color); border-radius: 10px; border-left: 3px solid var(--info);">
+                                        <div style="color: var(--text-secondary); font-size: 0.85em; margin-bottom: 6px; font-weight: 600;">Description</div>
+                                        <div style="color: var(--text-primary); font-size: 0.95em; line-height: 1.5;">${search.description}</div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            
+                            <!-- Stats en grille moderne -->
+                            <div style="
+                                display: grid;
+                                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                                gap: 12px;
+                                margin-bottom: 20px;
+                            ">
+                                <div style="
+                                    padding: 16px;
+                                    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.1) 100%);
+                                    border-radius: 12px;
+                                    border: 1px solid rgba(59, 130, 246, 0.2);
+                                    text-align: center;
+                                ">
+                                    <div style="font-size: 1.8em; margin-bottom: 6px;">💼</div>
+                                    <div style="color: var(--text-secondary); font-size: 0.75em; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Type</div>
+                                    <div style="color: var(--text-primary); font-weight: 700; font-size: 0.95em;">${search.job_type || 'Tous'}</div>
+                                </div>
+                                
+                                <div style="
+                                    padding: 16px;
+                                    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%);
+                                    border-radius: 12px;
+                                    border: 1px solid rgba(139, 92, 246, 0.2);
+                                    text-align: center;
+                                ">
+                                    <div style="font-size: 1.8em; margin-bottom: 6px;">📊</div>
+                                    <div style="color: var(--text-secondary); font-size: 0.75em; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Max</div>
+                                    <div style="color: var(--text-primary); font-weight: 700; font-size: 0.95em;">${search.max_results || 50}</div>
+                                </div>
+                                
+                                ${search.run_count ? `
+                                    <div style="
+                                        padding: 16px;
+                                        background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%);
+                                        border-radius: 12px;
+                                        border: 1px solid rgba(245, 158, 11, 0.2);
+                                        text-align: center;
+                                    ">
+                                        <div style="font-size: 1.8em; margin-bottom: 6px;">🔄</div>
+                                        <div style="color: var(--text-secondary); font-size: 0.75em; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Exécutions</div>
+                                        <div style="color: var(--text-primary); font-weight: 700; font-size: 0.95em;">${search.run_count}</div>
+                                    </div>
+                                ` : ''}
+                                
+                                ${lastRun ? `
+                                    <div style="
+                                        padding: 16px;
+                                        background: linear-gradient(135deg, rgba(236, 72, 153, 0.1) 0%, rgba(219, 39, 119, 0.1) 100%);
+                                        border-radius: 12px;
+                                        border: 1px solid rgba(236, 72, 153, 0.2);
+                                        text-align: center;
+                                    ">
+                                        <div style="font-size: 1.8em; margin-bottom: 6px;">⏰</div>
+                                        <div style="color: var(--text-secondary); font-size: 0.75em; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Dernière</div>
+                                        <div style="color: var(--text-primary); font-weight: 700; font-size: 0.85em;">${new Date(lastRun.timestamp).toLocaleDateString('fr-FR', {day: '2-digit', month: 'short'})}</div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            
+                            <!-- Personas -->
+                            ${personasAssigned.length > 0 || personasExcluded.length > 0 ? `
+                                <div style="margin-bottom: 20px; padding: 16px; background: var(--border-color); border-radius: 12px;">
+                                    ${personasAssigned.length > 0 ? `
+                                        <div style="margin-bottom: 12px;">
+                                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                                                <span style="
+                                                    width: 24px;
+                                                    height: 24px;
+                                                    background: var(--success);
+                                                    border-radius: 6px;
+                                                    display: flex;
+                                                    align-items: center;
+                                                    justify-content: center;
+                                                    color: white;
+                                                    font-size: 0.85em;
+                                                ">✓</span>
+                                                <span style="color: var(--text-primary); font-weight: 700; font-size: 0.9em;">Assignés (${personasAssigned.length})</span>
+                                            </div>
+                                            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                                ${personasAssigned.slice(0, 4).map(email => `
+                                                    <span style="
+                                                        background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+                                                        color: white;
+                                                        padding: 6px 12px;
+                                                        border-radius: 20px;
+                                                        font-size: 0.8em;
+                                                        font-weight: 600;
+                                                        box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+                                                    ">${email}</span>
+                                                `).join('')}
+                                                ${personasAssigned.length > 4 ? `
+                                                    <span style="
+                                                        background: var(--border-color);
+                                                        color: var(--text-secondary);
+                                                        padding: 6px 12px;
+                                                        border-radius: 20px;
+                                                        font-size: 0.8em;
+                                                        font-weight: 600;
+                                                    ">+${personasAssigned.length - 4}</span>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                    ${personasExcluded.length > 0 ? `
+                                        <div>
+                                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                                                <span style="
+                                                    width: 24px;
+                                                    height: 24px;
+                                                    background: var(--error);
+                                                    border-radius: 6px;
+                                                    display: flex;
+                                                    align-items: center;
+                                                    justify-content: center;
+                                                    color: white;
+                                                    font-size: 0.85em;
+                                                ">✗</span>
+                                                <span style="color: var(--text-primary); font-weight: 700; font-size: 0.9em;">Exclus (${personasExcluded.length})</span>
+                                            </div>
+                                            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                                ${personasExcluded.slice(0, 4).map(email => `
+                                                    <span style="
+                                                        background: linear-gradient(135deg, var(--error) 0%, #dc2626 100%);
+                                                        color: white;
+                                                        padding: 6px 12px;
+                                                        border-radius: 20px;
+                                                        font-size: 0.8em;
+                                                        font-weight: 600;
+                                                        box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+                                                    ">${email}</span>
+                                                `).join('')}
+                                                ${personasExcluded.length > 4 ? `
+                                                    <span style="
+                                                        background: var(--border-color);
+                                                        color: var(--text-secondary);
+                                                        padding: 6px 12px;
+                                                        border-radius: 20px;
+                                                        font-size: 0.8em;
+                                                        font-weight: 600;
+                                                    ">+${personasExcluded.length - 4}</span>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            ` : ''}
+                            
+                            <!-- Actions -->
+                            <div style="
+                                display: grid;
+                                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                                gap: 10px;
+                                padding-top: 20px;
+                                border-top: 2px solid var(--border-color);
+                            ">
+                                <button onclick="event.stopPropagation(); showSearchDetails('${key}')" style="
+                                    padding: 12px 16px;
+                                    background: linear-gradient(135deg, var(--info) 0%, #2563eb 100%);
+                                    color: white;
+                                    border: none;
+                                    border-radius: 10px;
+                                    font-weight: 600;
+                                    font-size: 0.9em;
+                                    cursor: pointer;
+                                    transition: all 0.3s ease;
+                                    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+                                " onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.4)'" 
+                                   onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(59, 130, 246, 0.3)'">
+                                    📊 Détails
+                                </button>
+                                <button onclick="event.stopPropagation(); editSearch('${key}')" style="
+                                    padding: 12px 16px;
+                                    background: linear-gradient(135deg, var(--text-title) 0%, #5b21b6 100%);
+                                    color: white;
+                                    border: none;
+                                    border-radius: 10px;
+                                    font-weight: 600;
+                                    font-size: 0.9em;
+                                    cursor: pointer;
+                                    transition: all 0.3s ease;
+                                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+                                " onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'" 
+                                   onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)'">
+                                    ✏️ Modifier
+                                </button>
+                                <button onclick="event.stopPropagation(); duplicateSearch('${key}')" style="
+                                    padding: 12px 16px;
+                                    background: linear-gradient(135deg, var(--warning) 0%, #d97706 100%);
+                                    color: white;
+                                    border: none;
+                                    border-radius: 10px;
+                                    font-weight: 600;
+                                    font-size: 0.9em;
+                                    cursor: pointer;
+                                    transition: all 0.3s ease;
+                                    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+                                " onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(245, 158, 11, 0.4)'" 
+                                   onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(245, 158, 11, 0.3)'">
+                                    📋 Dupliquer
+                                </button>
+                                <button onclick="event.stopPropagation(); deleteSearch('${key}')" style="
+                                    padding: 12px 16px;
+                                    background: linear-gradient(135deg, var(--error) 0%, #dc2626 100%);
+                                    color: white;
+                                    border: none;
+                                    border-radius: 10px;
+                                    font-weight: 600;
+                                    font-size: 0.9em;
+                                    cursor: pointer;
+                                    transition: all 0.3s ease;
+                                    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+                                " onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(239, 68, 68, 0.4)'" 
+                                   onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(239, 68, 68, 0.3)'">
+                                    🗑️ Supprimer
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -2769,21 +3413,174 @@
                 selectedSearches.add(searchKey);
             }
             renderSearchesList();
+            updateSelectedSearchesCount();
+        }
+        
+        function selectAllSearches() {
+            Object.keys(allSearches).forEach(key => {
+                selectedSearches.add(key);
+            });
+            renderSearchesList();
+            updateSelectedSearchesCount();
+        }
+        
+        function deselectAllSearches() {
+            selectedSearches.clear();
+            renderSearchesList();
+            updateSelectedSearchesCount();
+        }
+        
+        function toggleAllSearchesEnabled() {
+            const allSelected = Object.keys(allSearches).length === selectedSearches.size && selectedSearches.size > 0;
+            if (allSelected) {
+                // Désactiver toutes les recherches sélectionnées
+                Array.from(selectedSearches).forEach(async (key) => {
+                    try {
+                        const search = allSearches[key];
+                        await fetch(`/api/searches/${key}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ ...search, enabled: false })
+                        });
+                    } catch (error) {
+                        console.error(`Erreur désactivation recherche ${key}:`, error);
+                    }
+                });
+                addLog('Recherches désactivées', 'info');
+                loadAllSearches();
+            } else {
+                // Activer toutes les recherches sélectionnées
+                Array.from(selectedSearches).forEach(async (key) => {
+                    try {
+                        const search = allSearches[key];
+                        await fetch(`/api/searches/${key}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ ...search, enabled: true })
+                        });
+                    } catch (error) {
+                        console.error(`Erreur activation recherche ${key}:`, error);
+                    }
+                });
+                addLog('Recherches activées', 'info');
+                loadAllSearches();
+            }
         }
         
         function updateSelectedSearchesCount() {
             const count = selectedSearches.size;
             const countElement = document.getElementById('selectedSearchesCount');
             if (countElement) {
-                countElement.textContent = count;
+                countElement.textContent = `${count} sélectionnée(s)`;
             }
+        }
+        
+        async function showSearchDetails(searchKey) {
+            const search = allSearches[searchKey];
+            if (!search) return;
+            
+            const history = search.history || [];
+            const personasAssigned = search.personas_assigned || [];
+            const personasExcluded = search.personas_excluded || [];
+            
+            let historyHtml = '';
+            if (history.length === 0) {
+                historyHtml = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">Aucune exécution enregistrée</p>';
+            } else {
+                history.slice(-10).reverse().forEach((run, idx) => {
+                    historyHtml += `
+                        <div style="padding: 15px; margin-bottom: 10px; background: var(--border-color); border-radius: 8px; border-left: 4px solid var(--text-title);">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                <strong style="color: var(--text-title);">Exécution #${history.length - idx}</strong>
+                                <span style="color: var(--text-secondary); font-size: 0.85em;">${new Date(run.timestamp).toLocaleString('fr-FR')}</span>
+                            </div>
+                            ${run.steps ? run.steps.map(step => `
+                                <div style="margin: 5px 0; padding: 8px; background: var(--bg-card); border-radius: 5px;">
+                                    <span style="color: var(--text-primary);">${step.step}</span>
+                                    ${step.status ? `<span style="color: ${step.status === 'success' ? 'var(--success)' : 'var(--error)'}; margin-left: 10px;">${step.status === 'success' ? '✓' : '✗'}</span>` : ''}
+                                    ${step.message ? `<div style="color: var(--text-secondary); font-size: 0.85em; margin-top: 3px;">${step.message}</div>` : ''}
+                                </div>
+                            `).join('') : ''}
+                            ${run.stats ? `
+                                <div style="margin-top: 10px; padding: 10px; background: var(--bg-card); border-radius: 5px;">
+                                    <strong style="color: var(--text-title);">Statistiques:</strong>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 8px;">
+                                        <div><span style="color: var(--text-secondary);">Offres trouvées:</span> <strong>${run.stats.jobs_found || 0}</strong></div>
+                                        <div><span style="color: var(--text-secondary);">Candidatures:</span> <strong>${run.stats.applications_sent || 0}</strong></div>
+                                        <div><span style="color: var(--text-secondary);">Réussies:</span> <strong style="color: var(--success);">${run.stats.successful || 0}</strong></div>
+                                        <div><span style="color: var(--text-secondary);">Échouées:</span> <strong style="color: var(--error);">${run.stats.failed || 0}</strong></div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+            }
+            
+            const modal = document.createElement('div');
+            modal.className = 'modal active';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+                    <div class="modal-header">
+                        <h2 style="color: var(--text-title);">📊 Détails de la recherche: ${search.name}</h2>
+                        <button class="modal-close" onclick="this.closest('.modal').remove()">✕</button>
+                    </div>
+                    
+                    <div style="padding: 20px;">
+                        <div style="margin-bottom: 20px;">
+                            <h3 style="color: var(--text-title); margin-bottom: 10px;">Informations générales</h3>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                                <div><strong>Requête:</strong> ${search.query || 'N/A'}</div>
+                                <div><strong>Localisation:</strong> ${search.location || 'N/A'}</div>
+                                <div><strong>Type:</strong> ${search.job_type || 'Tous'}</div>
+                                <div><strong>Max résultats:</strong> ${search.max_results || 50}</div>
+                                <div><strong>Statut:</strong> ${search.enabled !== false ? '<span style="color: var(--success);">✓ Activée</span>' : '<span style="color: var(--error);">✗ Désactivée</span>'}</div>
+                                <div><strong>Standalone:</strong> ${search.standalone ? 'Oui' : 'Non'}</div>
+                            </div>
+                        </div>
+                        
+                        ${personasAssigned.length > 0 || personasExcluded.length > 0 ? `
+                            <div style="margin-bottom: 20px;">
+                                <h3 style="color: var(--text-title); margin-bottom: 10px;">Personas</h3>
+                                ${personasAssigned.length > 0 ? `
+                                    <div style="margin-bottom: 10px;">
+                                        <strong style="color: var(--success);">Assignés (${personasAssigned.length}):</strong>
+                                        <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px;">
+                                            ${personasAssigned.map(email => `<span style="background: var(--success); color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.85em;">${email}</span>`).join('')}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                                ${personasExcluded.length > 0 ? `
+                                    <div>
+                                        <strong style="color: var(--error);">Exclus (${personasExcluded.length}):</strong>
+                                        <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px;">
+                                            ${personasExcluded.map(email => `<span style="background: var(--error); color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.85em;">${email}</span>`).join('')}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        ` : ''}
+                        
+                        <div>
+                            <h3 style="color: var(--text-title); margin-bottom: 10px;">Historique des exécutions</h3>
+                            <div style="max-height: 400px; overflow-y: auto;">
+                                ${historyHtml}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
         }
         
         function showCreateSearchModal() {
             currentSearchKey = null;
+            searchAssignedPersonas = new Set();
+            searchExcludedPersonas = new Set();
             const modalTitle = document.getElementById('searchModalTitle');
             const form = document.getElementById('searchForm');
             const enabledCheck = document.getElementById('searchEnabled');
+            const standaloneCheck = document.getElementById('searchStandalone');
             const modal = document.getElementById('searchModal');
             
             if (!modalTitle || !form || !enabledCheck || !modal) {
@@ -2794,6 +3591,9 @@
             modalTitle.textContent = 'Créer une recherche';
             form.reset();
             enabledCheck.checked = true;
+            if (standaloneCheck) standaloneCheck.checked = false;
+            updatePersonasDisplay('assigned', searchAssignedPersonas);
+            updatePersonasDisplay('excluded', searchExcludedPersonas);
             loadJobTypes();
             modal.classList.add('active');
         }
@@ -2854,6 +3654,15 @@
                 }
             });
             
+            // Charger les personas assignés et exclus
+            searchAssignedPersonas = new Set(search.personas_assigned || []);
+            searchExcludedPersonas = new Set(search.personas_excluded || []);
+            updatePersonasDisplay('assigned', searchAssignedPersonas);
+            updatePersonasDisplay('excluded', searchExcludedPersonas);
+            
+            const standaloneCheck = document.getElementById('searchStandalone');
+            if (standaloneCheck) standaloneCheck.checked = search.standalone || false;
+            
             modal.classList.add('active');
         }
         
@@ -2886,20 +3695,40 @@
             const excludeKeywords = excludeKeywordsInput ? excludeKeywordsInput.value.split(',').map(s => s.trim()).filter(s => s) : [];
             const maxResults = maxResultsInput ? parseInt(maxResultsInput.value) : 50;
             const enabled = enabledCheck ? enabledCheck.checked : true;
+            const standaloneCheck = document.getElementById('searchStandalone');
+            const standalone = standaloneCheck ? standaloneCheck.checked : false;
+            
+            // Récupérer les personas assignés et exclus
+            const personasAssigned = Array.from(searchAssignedPersonas || []);
+            const personasExcluded = Array.from(searchExcludedPersonas || []);
             
             try {
                 let response;
+                const searchData = {
+                    name, description, query, location, 
+                    job_type: jobType, search_type: jobType,
+                    title_keywords: titleKeywords, 
+                    location_keywords: locationKeywords, 
+                    exclude_keywords: excludeKeywords, 
+                    max_results: maxResults, 
+                    enabled,
+                    is_active: enabled,
+                    standalone,
+                    personas_assigned: personasAssigned,
+                    personas_excluded: personasExcluded
+                };
+                
                 if (currentSearchKey) {
                     response = await fetch(`/api/searches/${currentSearchKey}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name, description, query, location, job_type: jobType, title_keywords: titleKeywords, location_keywords: locationKeywords, exclude_keywords: excludeKeywords, max_results: maxResults, enabled })
+                        body: JSON.stringify(searchData)
                     });
                 } else {
                     response = await fetch('/api/searches', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name, description, query, location, job_type: jobType, title_keywords: titleKeywords, location_keywords: locationKeywords, exclude_keywords: excludeKeywords, max_results: maxResults, enabled })
+                        body: JSON.stringify(searchData)
                     });
                 }
                 
@@ -3100,6 +3929,352 @@
                 console.error('Erreur:', error);
             }
         }
+        
+        // Charger les recherches dans les paramètres
+        async function loadSettingsSearches() {
+            const container = document.getElementById('settingsSearchesList');
+            if (!container) return;
+            
+            try {
+                const response = await fetch('/api/searches');
+                allSearches = await response.json();
+                
+                let html = '';
+                for (const [key, search] of Object.entries(allSearches)) {
+                    const isSelected = settingsSelectedSearches.has(key);
+                    const assignedCount = (search.personas_assigned || []).length;
+                    const excludedCount = (search.personas_excluded || []).length;
+                    
+                    html += `
+                        <label style="display: flex; align-items: center; gap: 10px; padding: 10px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.2s;">
+                            <input type="checkbox" data-search-key="${key}" ${isSelected ? 'checked' : ''} onchange="toggleSettingsSearch('${key}')">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600;">${search.name}</div>
+                                <div style="font-size: 0.85em; color: var(--text-secondary);">${search.query} - ${search.location}</div>
+                                ${assignedCount > 0 ? `<small style="color: var(--info);">👥 ${assignedCount} persona(s) assigné(s)</small>` : ''}
+                                ${excludedCount > 0 ? `<small style="color: var(--warning);">🚫 ${excludedCount} persona(s) exclu(s)</small>` : ''}
+                                ${search.standalone ? '<small style="color: var(--info);">🔍 Standalone</small>' : ''}
+                            </div>
+                        </label>
+                    `;
+                }
+                container.innerHTML = html || '<p style="text-align: center; color: var(--text-secondary);">Aucune recherche disponible</p>';
+            } catch (error) {
+                container.innerHTML = `<p style="color: var(--error);">Erreur: ${error.message}</p>`;
+            }
+        }
+        
+        function toggleSettingsSearch(searchKey) {
+            if (settingsSelectedSearches.has(searchKey)) {
+                settingsSelectedSearches.delete(searchKey);
+            } else {
+                settingsSelectedSearches.add(searchKey);
+            }
+            loadSettingsSearches();
+        }
+        
+        function showSettingsPersonaSelector() {
+            showPersonaSelector('default');
+        }
+        
+        function clearSettingsSelections() {
+            settingsSelectedSearches.clear();
+            settingsSelectedPersonas.clear();
+            loadSettingsSearches();
+            updatePersonasDisplay('default', settingsSelectedPersonas);
+        }
+        
+        async function startMultipleSearchesFromSettings() {
+            const searchKeys = Array.from(settingsSelectedSearches);
+            const selectedPersonasList = Array.from(settingsSelectedPersonas);
+            const maxPerPersona = parseInt(document.getElementById('settingsMaxPerPersona')?.value || 3);
+            const delayMin = parseInt(document.getElementById('settingsDelayMin')?.value || 5);
+            const delayMax = parseInt(document.getElementById('settingsDelayMax')?.value || 10);
+            const useCoverLetter = document.getElementById('settingsUseCoverLetter')?.checked || true;
+            
+            if (searchKeys.length === 0) {
+                alert('Veuillez sélectionner au moins une recherche');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/searches/run-multiple', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        search_keys: searchKeys,
+                        selected_personas: selectedPersonasList.length > 0 ? selectedPersonasList : null,
+                        max_per_persona: maxPerPersona,
+                        delay_min: delayMin,
+                        delay_max: delayMax,
+                        use_cover_letter: useCoverLetter
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    addLog(`🚀 ${searchKeys.length} recherche(s) lancée(s)`, 'success');
+                    showSection('dashboard');
+                } else {
+                    addLog(`Erreur: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                addLog(`Erreur: ${error.message}`, 'error');
+            }
+        }
+        
+        // Fonctions pour le modal de test de candidature
+        function showTestApplicationModal() {
+            const modal = document.getElementById('testApplicationModal');
+            if (!modal) return;
+            
+            // Charger les personas dans le select
+            const personaSelect = document.getElementById('testPersona');
+            if (personaSelect) {
+                personaSelect.innerHTML = '<option value="">Chargement...</option>';
+                loadPersonas().then(() => {
+                    personaSelect.innerHTML = '<option value="">Sélectionner un persona</option>';
+                    for (const [key, persona] of Object.entries(allPersonas)) {
+                        if (!persona.alias) {
+                            const option = document.createElement('option');
+                            option.value = persona.email;
+                            option.textContent = `${persona.name} (${persona.email})`;
+                            personaSelect.appendChild(option);
+                        }
+                    }
+                });
+            }
+            
+            modal.classList.add('active');
+        }
+        
+        function closeTestApplicationModal() {
+            const modal = document.getElementById('testApplicationModal');
+            if (modal) {
+                modal.classList.remove('active');
+                const resultDiv = document.getElementById('testApplicationResult');
+                if (resultDiv) {
+                    resultDiv.style.display = 'none';
+                    resultDiv.innerHTML = '';
+                }
+            }
+        }
+        
+        async function startTestApplication() {
+            const platform = document.getElementById('testPlatform')?.value;
+            const jobUrl = document.getElementById('testJobUrl')?.value;
+            const personaEmail = document.getElementById('testPersona')?.value;
+            const useCoverLetter = document.getElementById('testUseCoverLetter')?.checked;
+            const headless = document.getElementById('testHeadless')?.checked;
+            const dryRun = document.getElementById('testDryRun')?.checked;
+            
+            if (!platform || !jobUrl || !personaEmail) {
+                alert('Veuillez remplir tous les champs obligatoires');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('testApplicationResult');
+            if (resultDiv) {
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = '<p style="color: var(--info);">⏳ Test en cours...</p>';
+            }
+            
+            try {
+                const response = await fetch('/api/test-application', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        platform,
+                        job_url: jobUrl,
+                        persona_email: personaEmail,
+                        use_cover_letter: useCoverLetter,
+                        headless,
+                        dry_run: dryRun
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (resultDiv) {
+                    if (data.success) {
+                        resultDiv.innerHTML = `
+                            <div style="background: var(--success); color: white; padding: 15px; border-radius: 8px;">
+                                <h3 style="margin: 0 0 10px 0;">✅ Test réussi</h3>
+                                <p style="margin: 0;">${data.message || 'La candidature a été testée avec succès'}</p>
+                                ${data.details ? `<pre style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 5px; margin-top: 10px; overflow-x: auto; font-size: 0.85em;">${JSON.stringify(data.details, null, 2)}</pre>` : ''}
+                            </div>
+                        `;
+                    } else {
+                        resultDiv.innerHTML = `
+                            <div style="background: var(--error); color: white; padding: 15px; border-radius: 8px;">
+                                <h3 style="margin: 0 0 10px 0;">❌ Test échoué</h3>
+                                <p style="margin: 0;">${data.error || 'Erreur lors du test'}</p>
+                                ${data.details ? `<pre style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 5px; margin-top: 10px; overflow-x: auto; font-size: 0.85em;">${JSON.stringify(data.details, null, 2)}</pre>` : ''}
+                            </div>
+                        `;
+                    }
+                }
+            } catch (error) {
+                if (resultDiv) {
+                    resultDiv.innerHTML = `
+                        <div style="background: var(--error); color: white; padding: 15px; border-radius: 8px;">
+                            <h3 style="margin: 0 0 10px 0;">❌ Erreur</h3>
+                            <p style="margin: 0;">${error.message}</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+        
+        // Fonctions pour la gestion des emails
+        async function loadEmailsPersonas() {
+            const container = document.getElementById('emailsPersonasContainer');
+            if (!container) return;
+            
+            try {
+                await loadPersonas();
+                let html = '';
+                
+                for (const [key, persona] of Object.entries(allPersonas)) {
+                    if (persona.alias) continue;
+                    
+                    let emailStats = { total: 0, unread: 0 };
+                    try {
+                        const response = await fetch(`/api/personas/${encodeURIComponent(persona.email)}/emails/count`);
+                        if (response.ok) {
+                            emailStats = await response.json();
+                        }
+                    } catch (e) {
+                        console.error('Erreur chargement stats emails:', e);
+                    }
+                    
+                    html += `
+                        <div class="card" style="padding: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                                <div>
+                                    <h3 style="margin: 0; color: var(--text-title); font-size: 1.1em;">${persona.name}</h3>
+                                    <p style="margin: 5px 0 0 0; color: var(--text-secondary); font-size: 0.9em; font-family: monospace;">${persona.email}</p>
+                                </div>
+                            </div>
+                            <div style="margin-bottom: 15px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <span style="color: var(--text-secondary);">📧 Emails:</span>
+                                    <strong style="color: var(--text-primary);">${emailStats.total}</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: var(--text-secondary);">📬 Non lus:</span>
+                                    <strong style="color: ${emailStats.unread > 0 ? 'var(--warning)' : 'var(--text-primary)'};">
+                                        ${emailStats.unread}
+                                    </strong>
+                                </div>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <button class="btn btn-sm btn-primary" onclick="testEmailConnection('${persona.email}', '${persona.name}')" style="width: 100%;">
+                                    🔌 Test Connexion
+                                </button>
+                                <button class="btn btn-sm btn-info" onclick="fetchEmailsFromIMAP('${persona.email}', '${persona.name}')" style="width: 100%;">
+                                    📥 Récupérer depuis IMAP
+                                </button>
+                                <button class="btn btn-sm btn-success" onclick="viewEmails('${persona.email}', '${persona.name}')" style="width: 100%;">
+                                    📬 Voir les emails (${emailStats.total})
+                                </button>
+                                <button class="btn btn-sm btn-info" onclick="parseEmails('${persona.email}')" style="width: 100%;">
+                                    📊 Analyser les emails
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                container.innerHTML = html || '<p style="color: var(--text-secondary);">Aucun persona trouvé</p>';
+            } catch (error) {
+                console.error('Erreur chargement personas emails:', error);
+                container.innerHTML = '<p style="color: var(--error);">Erreur lors du chargement</p>';
+            }
+        }
+        
+        async function testEmailConnection(personaEmail, personaName) {
+            try {
+                addLog(`Test de connexion email pour ${personaName}...`, 'info');
+                const response = await fetch(`/api/personas/${encodeURIComponent(personaEmail)}/emails/test-connection`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    addLog(`✅ Connexion réussie pour ${personaName}: ${data.message}`, 'success');
+                    alert(`✅ Connexion réussie!\n\n${data.message}\nServeur: ${data.server || 'N/A'}\nPort: ${data.port || 'N/A'}`);
+                } else {
+                    addLog(`❌ Échec connexion pour ${personaName}: ${data.error}`, 'error');
+                    alert(`❌ Échec de la connexion\n\n${data.error}\n\n${data.hint || ''}`);
+                }
+            } catch (error) {
+                addLog(`Erreur test connexion: ${error.message}`, 'error');
+                alert(`Erreur: ${error.message}`);
+            }
+        }
+        
+        async function fetchEmailsFromIMAP(personaEmail, personaName) {
+            if (!confirm(`Récupérer les emails depuis IMAP pour ${personaName} ?`)) {
+                return;
+            }
+            
+            try {
+                addLog(`Récupération emails depuis IMAP pour ${personaName}...`, 'info');
+                const response = await fetch(`/api/personas/${encodeURIComponent(personaEmail)}/emails/fetch`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    addLog(`✅ ${data.count || 0} email(s) récupéré(s) pour ${personaName}`, 'success');
+                    alert(`✅ ${data.count || 0} email(s) récupéré(s) avec succès!`);
+                    if (currentSection === 'emails') {
+                        loadEmailsPersonas();
+                    }
+                } else {
+                    addLog(`❌ Erreur récupération emails pour ${personaName}: ${data.error}`, 'error');
+                    alert(`❌ Erreur: ${data.error}`);
+                }
+            } catch (error) {
+                addLog(`Erreur récupération emails: ${error.message}`, 'error');
+                alert(`Erreur: ${error.message}`);
+            }
+        }
+        
+        async function parseEmails(personaEmail) {
+            try {
+                addLog(`Analyse des emails pour ${personaEmail}...`, 'info');
+                const response = await fetch(`/api/personas/${encodeURIComponent(personaEmail)}/emails/parse`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const stats = await response.json();
+                
+                let message = `📊 Analyse des emails:\n\n`;
+                message += `Total: ${stats.total}\n`;
+                message += `✅ Entretiens: ${stats.interviews || 0}\n`;
+                message += `❌ Refus: ${stats.rejections || 0}\n`;
+                message += `🎉 Acceptations: ${stats.acceptances || 0}\n`;
+                message += `📧 Accusés de réception: ${stats.acknowledgments || 0}\n`;
+                message += `🔄 Relances: ${stats.follow_ups || 0}\n`;
+                message += `❓ Inconnus: ${stats.unknown || 0}`;
+                
+                if (Object.keys(stats.companies || {}).length > 0) {
+                    message += `\n\nEntreprises:\n`;
+                    for (const [company, count] of Object.entries(stats.companies)) {
+                        message += `  - ${company}: ${count}\n`;
+                    }
+                }
+                
+                alert(message);
+                addLog(`Analyse terminée: ${stats.interviews} entretien(s), ${stats.rejections} refus`, 'success');
+            } catch (error) {
+                addLog(`Erreur analyse emails: ${error.message}`, 'error');
+                alert(`Erreur: ${error.message}`);
+            }
+        }
+        
     </script>
 </body>
 </html>

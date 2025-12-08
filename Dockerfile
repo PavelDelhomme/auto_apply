@@ -41,9 +41,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copier le code source
 COPY src/ /app/src/
 COPY templates/ /app/templates/
-COPY *.json /app/
-COPY *.html /app/
-COPY *.txt /app/
+COPY static/ /app/static/
+COPY config/ /app/config/
+COPY tests/ /app/tests/
+COPY static/ /app/static/
+COPY pytest.ini /app/pytest.ini
 
 # Créer les dossiers nécessaires avec les bonnes permissions
 RUN mkdir -p /app/cvs /app/data && \

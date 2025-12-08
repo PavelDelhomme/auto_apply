@@ -16,7 +16,7 @@ from application_generator import generate_cover_letter
 import random
 import time
 
-def load_personas(personas_file="personas.json"):
+def load_personas(personas_file="config/personas.json"):
     """Charge les personas depuis le fichier JSON."""
     with open(personas_file, 'r', encoding='utf-8') as file:
         return json.load(file)

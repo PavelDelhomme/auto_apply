@@ -179,6 +179,28 @@ test: ## Teste la connexion au conteneur
 	@printf "$(GREEN)🧪 Test de connexion...$(NC)\n"
 	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -c "import sys; print('Python:', sys.version)" || printf "$(RED)❌ Le conteneur n'est pas accessible$(NC)\n"
 
+test-unit: ## Lance les tests unitaires
+	@printf "$(GREEN)🧪 Lancement des tests unitaires...$(NC)\n"
+	@printf "$(YELLOW)📦 Vérification de l'installation de pytest...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install -q pytest pytest-cov pytest-mock 2>/dev/null || true
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/ -v --tb=short -m "not integration" || printf "$(YELLOW)⚠️  Certains tests peuvent nécessiter une configuration spécifique$(NC)\n"
+
+test-integration: ## Lance les tests d'intégration
+	@printf "$(GREEN)🧪 Lancement des tests d'intégration...$(NC)\n"
+	@printf "$(YELLOW)📦 Vérification de l'installation de pytest...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install -q pytest pytest-cov pytest-mock 2>/dev/null || true
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/ -v --tb=short -m integration || printf "$(YELLOW)⚠️  Les tests d'intégration nécessitent une configuration complète$(NC)\n"
+
+test-all: ## Lance tous les tests
+	@printf "$(GREEN)🧪 Lancement de tous les tests...$(NC)\n"
+	@printf "$(YELLOW)📦 Vérification de l'installation de pytest...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) pip install -q pytest pytest-cov pytest-mock 2>/dev/null || true
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -m pytest tests/ -v --tb=short --cov=src --cov-report=term-missing || printf "$(YELLOW)⚠️  Certains tests peuvent nécessiter une configuration spécifique$(NC)\n"
+
+test-local: ## Lance les tests localement (sans Docker)
+	@printf "$(GREEN)🧪 Lancement des tests localement...$(NC)\n"
+	@pytest tests/ -v --tb=short || printf "$(YELLOW)⚠️  Assurez-vous que pytest est installé: pip install -r requirements.txt$(NC)\n"
+
 install-deps: ## Installe les dépendances localement (sans Docker)
 	@printf "$(GREEN)📦 Installation des dépendances Python...$(NC)\n"
 	pip install -r requirements.txt

@@ -5,16 +5,14 @@ services:
     ports:
       - "2020:2020"  # Port principal pour l'interface web
     volumes:
-      - ./personas.json:/app/personas.json
-      - ./cvs.json:/app/cvs.json
-      - ./searches.json:/app/searches.json
-      - ./cv_template.html:/app/cv_template.html
-      - ./cover_letter_template.txt:/app/cover_letter_template.txt
+      - ./config:/app/config
       - ./templates:/app/templates
+      - ./static:/app/static
       - ./cvs:/app/cvs
       - ./photos:/app/photos
       - ./data:/app/data
       - ./src:/app/src
+      - ./tests:/app/tests
     environment:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1

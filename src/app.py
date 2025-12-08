@@ -1,22 +1,30 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit
 import json
 import threading
 import time
 import random
+import logging
+import sqlite3
 from datetime import datetime
 from .cv_generator import generate_cvs_from_json, generate_cv_for_persona
 from .scraper import scrape_indeed
 from .auto_apply import apply_to_job
 from .job_filter import filter_jobs
-from .database import create_database, insert_job, get_unapplied_jobs, insert_application, update_application_status, get_db_path
+from .database import (create_database, insert_job, get_unapplied_jobs, insert_application, 
+                      update_application_status, get_db_path, insert_email, insert_log, 
+                      get_logs, insert_historical_stat, get_historical_stats, 
+                      delete_test_data, mark_as_test_data, save_persona_cv, get_persona_cv, 
+                      get_all_persona_cvs, get_all_jobs)
 from .stats import get_statistics
 from .application_generator import generate_cover_letter
 from .persona_manager import PersonaManager
 from .search_manager import SearchManager
 import os
 
-app = Flask(__name__, template_folder='/app/templates')
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__, template_folder='/app/templates', static_folder='/app/static')
 app.config['SECRET_KEY'] = 'auto-apply-secret-key-2024'
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
@@ -39,7 +47,7 @@ app_state['container_status'] = 'running'
 def load_personas():
     """Charge les personas depuis le fichier JSON."""
     try:
-        personas_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'personas.json')
+        personas_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'personas.json')
         with open(personas_file, 'r', encoding='utf-8') as file:
             return json.load(file)
     except Exception as e:
@@ -47,31 +55,39 @@ def load_personas():
         return {}
 
 # Initialiser les gestionnaires avec les bons chemins
-persona_manager = PersonaManager("/app/personas.json")
-search_manager = SearchManager("/app/searches.json")
+persona_manager = PersonaManager("/app/config/personas.json")
+search_manager = SearchManager("/app/config/searches.json")
 
 def load_cvs():
     """Charge les CVs depuis le fichier JSON."""
     try:
-        cvs_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'cvs.json')
+        cvs_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'cvs.json')
         with open(cvs_file, 'r', encoding='utf-8') as file:
             return json.load(file)
     except Exception as e:
         log_message(f"Erreur lors du chargement des CVs: {e}", "error")
         return {}
 
-def log_message(message, level="info"):
+def log_message(message, level="info", category="general", is_test_data=False):
     """Ajoute un message de log et l'émet via WebSocket."""
     timestamp = datetime.now().strftime("%H:%M:%S")
     log_entry = {
         'timestamp': timestamp,
         'message': message,
-        'level': level
+        'level': level,
+        'category': category
     }
     app_state['logs'].append(log_entry)
-    # Garder seulement les 1000 derniers logs
+    # Garder seulement les 1000 derniers logs en mémoire
     if len(app_state['logs']) > 1000:
         app_state['logs'] = app_state['logs'][-1000:]
+    
+    # Stocker dans la base de données
+    try:
+        insert_log(message, level, category, is_test_data)
+    except Exception as e:
+        logger.error(f"Erreur lors de l'insertion du log: {e}")
+    
     socketio.emit('log', log_entry)
     print(f"[{timestamp}] [{level.upper()}] {message}")
 
@@ -85,7 +101,42 @@ def update_stats():
 @app.route('/')
 def index():
     """Page d'accueil avec le dashboard."""
-    return render_template('dashboard.html')
+    return render_template('pages/dashboard.html')
+
+@app.route('/personas')
+def personas_page():
+    """Page de gestion des personas."""
+    return render_template('pages/personas.html')
+
+@app.route('/searches')
+def searches_page():
+    """Page de gestion des recherches."""
+    return render_template('pages/searches.html')
+
+@app.route('/jobs')
+def jobs_page():
+    """Page des offres d'emploi."""
+    return render_template('pages/jobs.html')
+
+@app.route('/emails')
+def emails_page():
+    """Page de gestion des emails."""
+    return render_template('pages/emails.html')
+
+@app.route('/stats')
+def stats_page():
+    """Page des statistiques."""
+    return render_template('pages/stats.html')
+
+@app.route('/settings')
+def settings_page():
+    """Page des paramètres."""
+    return render_template('pages/settings.html')
+
+@app.route('/logs')
+def logs_page():
+    """Page des logs et historique."""
+    return render_template('pages/logs.html')
 
 @app.route('/old')
 def old_dashboard():
@@ -143,7 +194,18 @@ def api_create_persona():
             email=data.get('email'),
             password=data.get('password', ''),
             alias=data.get('alias', False),
-            parent=data.get('parent')
+            parent=data.get('parent'),
+            skills=data.get('skills', []),
+            experience_years=data.get('experience_years'),
+            education=data.get('education', []),
+            languages=data.get('languages', []),
+            location=data.get('location'),
+            phone=data.get('phone'),
+            linkedin=data.get('linkedin'),
+            github=data.get('github'),
+            portfolio=data.get('portfolio'),
+            notes=data.get('notes'),
+            email_config=data.get('email_config', {})
         )
         log_message(f"Persona créé: {data.get('name')} ({data.get('email')})", "success")
         return jsonify({'success': True, 'persona_key': persona_key, 'persona': persona_manager.get_persona(persona_key)})
@@ -248,13 +310,25 @@ def api_duplicate_persona(persona_key):
 # API pour les CVs des personas
 @app.route('/api/personas/<path:persona_email>/cv', methods=['GET'])
 def api_get_persona_cv(persona_email):
-    """Récupère le CV d'un persona."""
+    """Récupère le CV d'un persona (par défaut ou pour une recherche spécifique)."""
     import os
     from flask import send_file
     from urllib.parse import unquote
     
     # Décoder l'email depuis l'URL
     persona_email = unquote(persona_email)
+    search_key = request.args.get('search_key')
+    cv_id = request.args.get('cv_id')
+    
+    # Chercher dans la base de données d'abord
+    cv_info = get_persona_cv(persona_email, search_key=search_key, cv_id=cv_id)
+    if cv_info and os.path.exists(cv_info['cv_path']):
+        if cv_info['cv_path'].endswith('.pdf'):
+            return send_file(cv_info['cv_path'], mimetype='application/pdf', as_attachment=False)
+        else:
+            return send_file(cv_info['cv_path'], mimetype='text/html', as_attachment=False)
+    
+    # Fallback: chercher le fichier par défaut
     safe_email = persona_email.replace('@', '_at_').replace('.', '_')
     cv_dir = '/app/cvs'
     
@@ -269,6 +343,58 @@ def api_get_persona_cv(persona_email):
         return send_file(html_path, mimetype='text/html', as_attachment=False)
     
     return jsonify({'error': 'CV non trouvé'}), 404
+
+@app.route('/api/personas/<path:persona_email>/cvs', methods=['GET'])
+def api_list_persona_cvs(persona_email):
+    """Liste tous les CVs d'un persona."""
+    from urllib.parse import unquote
+    persona_email = unquote(persona_email)
+    cvs = get_all_persona_cvs(persona_email)
+    return jsonify(cvs)
+
+@app.route('/api/personas/<path:persona_email>/cv/generate', methods=['POST'])
+def api_generate_persona_cv(persona_email):
+    """Génère un CV pour un persona (optionnellement pour une recherche spécifique)."""
+    from urllib.parse import unquote
+    from .cv_generator import generate_cv_for_persona
+    import json
+    
+    persona_email = unquote(persona_email)
+    data = request.json
+    search_key = data.get('search_key')
+    cv_id = data.get('cv_id', 'default')
+    cv_data = data.get('cv_data', {})
+    
+    try:
+        persona = persona_manager.get_persona_by_email(persona_email)
+        if not persona:
+            return jsonify({'error': 'Persona non trouvé'}), 404
+        
+        # Générer le CV
+        cv_path = generate_cv_for_persona(
+            persona_email=persona_email,
+            persona_name=persona.get('name'),
+            cv_data=cv_data,
+            search_key=search_key,
+            cv_id=cv_id
+        )
+        
+        if cv_path:
+            # Sauvegarder dans la base de données
+            save_persona_cv(
+                persona_email=persona_email,
+                cv_id=cv_id,
+                cv_path=cv_path,
+                cv_data=cv_data,
+                search_key=search_key,
+                is_default=(search_key is None and cv_id == 'default')
+            )
+            return jsonify({'success': True, 'cv_path': cv_path, 'cv_id': cv_id})
+        else:
+            return jsonify({'error': 'Erreur lors de la génération du CV'}), 500
+    except Exception as e:
+        logger.error(f"Erreur génération CV: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/personas/<path:persona_email>/cv/download', methods=['GET'])
 def api_download_persona_cv(persona_email):
@@ -433,6 +559,271 @@ def api_mark_email_read(persona_email, email_id):
         log_message(f"Erreur lors du marquage de l'email {email_id} comme lu pour {persona_email}: {e}", "error")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/personas/<path:persona_email>/emails/test-connection', methods=['POST'])
+def api_test_email_connection(persona_email):
+    """Teste la connexion IMAP pour un persona."""
+    from urllib.parse import unquote
+    import imaplib
+    
+    persona_email = unquote(persona_email)
+    
+    try:
+        # Récupérer les informations du persona
+        persona = persona_manager.get_persona_by_email(persona_email)
+        if not persona:
+            return jsonify({'success': False, 'error': 'Persona non trouvé'}), 404
+        
+        # Récupérer le mot de passe
+        password = persona.get('password')
+        if not password:
+            return jsonify({'success': False, 'error': 'Mot de passe non configuré pour ce persona'}), 400
+        
+        # Déterminer le serveur IMAP selon le domaine
+        email_domain = persona_email.split('@')[1].lower()
+        
+        # Vérifier si le persona a une configuration email personnalisée
+        imap_server = persona.get('email_config', {}).get('imap_server')
+        imap_port = persona.get('email_config', {}).get('imap_port', 993)
+        
+        if not imap_server:
+            # Utiliser la liste par défaut des serveurs IMAP
+            imap_servers = {
+                'gmx.com': 'imap.gmx.com',
+                'gmx.fr': 'imap.gmx.com',
+                'gmail.com': 'imap.gmail.com',
+                'outlook.com': 'outlook.office365.com',
+                'hotmail.com': 'outlook.office365.com',
+                'live.com': 'outlook.office365.com',
+                'yahoo.com': 'imap.mail.yahoo.com',
+                'yahoo.fr': 'imap.mail.yahoo.com',
+                'caramail.com': 'imap.caramail.com',
+                'caramail.fr': 'imap.caramail.com',
+                'orange.fr': 'imap.orange.fr',
+                'wanadoo.fr': 'imap.orange.fr',
+                'free.fr': 'imap.free.fr',
+                'laposte.net': 'imap.laposte.net',
+                'sfr.fr': 'imap.sfr.fr',
+                'numericable.fr': 'imap.numericable.fr'
+            }
+            
+            imap_server = imap_servers.get(email_domain)
+            if not imap_server:
+                # Essayer avec le format standard
+                imap_server = f'imap.{email_domain}'
+        
+        # Tester la connexion
+        try:
+            # Essayer avec SSL d'abord
+            try:
+                mail = imaplib.IMAP4_SSL(imap_server, imap_port)
+            except Exception as ssl_error:
+                # Si SSL échoue, essayer sans SSL (port 143)
+                logger.warning(f"SSL échoué pour {imap_server}, tentative sans SSL: {ssl_error}")
+                imap_server = imap_server.replace('imap.', '')  # Retirer le préfixe si présent
+                try:
+                    mail = imaplib.IMAP4(imap_server, 143)
+                except Exception as e:
+                    return jsonify({
+                        'success': False, 
+                        'error': f'Impossible de se connecter au serveur {imap_server}: {str(e)}'
+                    }), 500
+            
+            mail.login(persona_email, password)
+            mail.select('inbox')
+            mail.close()
+            mail.logout()
+            
+            log_message(f"Test connexion email réussi pour {persona_email} ({imap_server}:{imap_port})", "success")
+            return jsonify({
+                'success': True,
+                'message': f'Connexion réussie au serveur {imap_server}:{imap_port}',
+                'server': imap_server,
+                'port': imap_port
+            })
+        except imaplib.IMAP4.error as e:
+            error_msg = str(e)
+            logger.error(f"Erreur IMAP pour {persona_email} sur {imap_server}: {error_msg}")
+            if 'authentication failed' in error_msg.lower() or 'invalid credentials' in error_msg.lower():
+                return jsonify({
+                    'success': False, 
+                    'error': 'Identifiants incorrects. Vérifiez le mot de passe.',
+                    'server': imap_server,
+                    'port': imap_port
+                }), 401
+            elif 'login' in error_msg.lower():
+                return jsonify({
+                    'success': False, 
+                    'error': f'Erreur d\'authentification: {error_msg}. Vérifiez que l\'accès IMAP est activé pour ce compte.',
+                    'server': imap_server,
+                    'port': imap_port
+                }), 401
+            else:
+                return jsonify({
+                    'success': False, 
+                    'error': f'Erreur IMAP: {error_msg}',
+                    'server': imap_server,
+                    'port': imap_port,
+                    'hint': 'Vérifiez que le serveur IMAP est correct et que l\'accès IMAP est activé pour ce compte.'
+                }), 500
+        except socket.gaierror as e:
+            return jsonify({
+                'success': False, 
+                'error': f'Impossible de résoudre le nom du serveur {imap_server}. Vérifiez la configuration.',
+                'server': imap_server,
+                'port': imap_port
+            }), 500
+        except Exception as e:
+            logger.error(f"Erreur inattendue lors du test de connexion pour {persona_email}: {e}")
+            return jsonify({
+                'success': False, 
+                'error': f'Erreur de connexion: {str(e)}',
+                'server': imap_server,
+                'port': imap_port,
+                'hint': 'Vérifiez la configuration email du persona et que l\'accès IMAP est activé.'
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Erreur test connexion email pour {persona_email}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/personas/<path:persona_email>/emails/fetch', methods=['POST'])
+def api_fetch_emails_from_imap(persona_email):
+    """Récupère les emails depuis IMAP pour un persona."""
+    from urllib.parse import unquote
+    import imaplib
+    import email
+    from email.header import decode_header
+    
+    persona_email = unquote(persona_email)
+    
+    try:
+        # Récupérer les informations du persona
+        persona = persona_manager.get_persona_by_email(persona_email)
+        if not persona:
+            return jsonify({'success': False, 'error': 'Persona non trouvé'}), 404
+        
+        password = persona.get('password')
+        if not password:
+            return jsonify({'success': False, 'error': 'Mot de passe non configuré'}), 400
+        
+        # Déterminer le serveur IMAP
+        email_domain = persona_email.split('@')[1].lower()
+        
+        # Vérifier si le persona a une configuration email personnalisée
+        imap_server = persona.get('email_config', {}).get('imap_server')
+        imap_port = persona.get('email_config', {}).get('imap_port', 993)
+        
+        if not imap_server:
+            # Utiliser la liste par défaut des serveurs IMAP
+            imap_servers = {
+                'gmx.com': 'imap.gmx.com',
+                'gmx.fr': 'imap.gmx.com',
+                'gmail.com': 'imap.gmail.com',
+                'outlook.com': 'outlook.office365.com',
+                'hotmail.com': 'outlook.office365.com',
+                'live.com': 'outlook.office365.com',
+                'yahoo.com': 'imap.mail.yahoo.com',
+                'yahoo.fr': 'imap.mail.yahoo.com',
+                'caramail.com': 'imap.caramail.com',
+                'caramail.fr': 'imap.caramail.com',
+                'orange.fr': 'imap.orange.fr',
+                'wanadoo.fr': 'imap.orange.fr',
+                'free.fr': 'imap.free.fr',
+                'laposte.net': 'imap.laposte.net',
+                'sfr.fr': 'imap.sfr.fr',
+                'numericable.fr': 'imap.numericable.fr'
+            }
+            
+            imap_server = imap_servers.get(email_domain)
+            if not imap_server:
+                # Essayer avec le format standard
+                imap_server = f'imap.{email_domain}'
+        
+        # Connexion IMAP
+        try:
+            mail = imaplib.IMAP4_SSL(imap_server, imap_port)
+        except Exception as ssl_error:
+            # Si SSL échoue, essayer sans SSL (port 143)
+            logger.warning(f"SSL échoué pour {imap_server}, tentative sans SSL: {ssl_error}")
+            try:
+                mail = imaplib.IMAP4(imap_server, 143)
+            except Exception as e:
+                log_message(f"Impossible de se connecter au serveur {imap_server}: {str(e)}", "error")
+                return jsonify({'success': False, 'error': f'Impossible de se connecter au serveur: {str(e)}'}), 500
+        
+        mail.login(persona_email, password)
+        mail.select('inbox')
+        
+        # Rechercher les emails non lus
+        status, messages = mail.search(None, 'UNSEEN')
+        email_ids = messages[0].split()
+        
+        fetched_count = 0
+        
+        for email_id in email_ids[:50]:  # Limiter à 50 emails
+            try:
+                status, msg_data = mail.fetch(email_id, '(RFC822)')
+                email_body = msg_data[0][1]
+                email_message = email.message_from_bytes(email_body)
+                
+                # Extraire les informations
+                subject = email_message['Subject']
+                if subject:
+                    decoded_subject = decode_header(subject)[0]
+                    if decoded_subject[1]:
+                        subject = decoded_subject[0].decode(decoded_subject[1])
+                    else:
+                        subject = decoded_subject[0] if isinstance(decoded_subject[0], str) else decoded_subject[0].decode()
+                
+                sender = email_message['From']
+                date = email_message['Date']
+                
+                # Extraire le corps du message
+                body = ''
+                if email_message.is_multipart():
+                    for part in email_message.walk():
+                        content_type = part.get_content_type()
+                        if content_type == 'text/plain':
+                            try:
+                                body = part.get_payload(decode=True).decode('utf-8', errors='ignore')
+                            except:
+                                pass
+                else:
+                    try:
+                        body = email_message.get_payload(decode=True).decode('utf-8', errors='ignore')
+                    except:
+                        body = str(email_message.get_payload())
+                
+                # Insérer dans la base de données
+                insert_email(
+                    persona_email=persona_email,
+                    sender=sender or 'Inconnu',
+                    subject=subject or '(Sans objet)',
+                    body=body[:5000],  # Limiter la taille
+                    email_type='application'
+                )
+                fetched_count += 1
+                
+            except Exception as e:
+                logger.error(f"Erreur lors de la récupération d'un email: {e}")
+                continue
+        
+        mail.close()
+        mail.logout()
+        
+        log_message(f"{fetched_count} email(s) récupéré(s) pour {persona_email}", "success")
+        return jsonify({'success': True, 'count': fetched_count})
+        
+    except imaplib.IMAP4.error as e:
+        error_msg = str(e)
+        if 'authentication failed' in error_msg.lower():
+            return jsonify({'success': False, 'error': 'Identifiants incorrects'}), 401
+        else:
+            return jsonify({'success': False, 'error': f'Erreur IMAP: {error_msg}'}), 500
+    except Exception as e:
+        logger.error(f"Erreur récupération emails IMAP pour {persona_email}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # API pour les recherches
 @app.route('/api/searches')
 def api_searches():
@@ -454,6 +845,22 @@ def api_get_search(search_key):
         return jsonify(search)
     return jsonify({'error': 'Recherche non trouvée'}), 404
 
+@app.route('/api/searches/<search_key>/history')
+def api_get_search_history(search_key):
+    """API pour récupérer l'historique d'exécution d'une recherche."""
+    try:
+        history = search_manager.get_execution_history(search_key)
+        last_execution = search_manager.get_last_execution(search_key)
+        return jsonify({
+            'success': True,
+            'history': history,
+            'last_execution': last_execution,
+            'total_executions': len(history)
+        })
+    except Exception as e:
+        logger.error(f"Erreur récupération historique recherche {search_key}: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/searches', methods=['POST'])
 def api_create_search():
     """API pour créer une nouvelle recherche."""
@@ -474,7 +881,20 @@ def api_create_search():
             search_type=search_type,
             max_results=data.get('max_results', 50),
             is_active=is_active,
-            description=data.get('description', '')
+            description=data.get('description', ''),
+            standalone=data.get('standalone', False),
+            salary_min=data.get('salary_min'),
+            salary_max=data.get('salary_max'),
+            contract_type=data.get('contract_type', []),
+            experience_level=data.get('experience_level'),
+            remote=data.get('remote'),
+            full_time=data.get('full_time'),
+            company_size=data.get('company_size'),
+            tags=data.get('tags', []),
+            notes=data.get('notes'),
+            priority=data.get('priority', 1),
+            personas_assigned=data.get('personas_assigned', []),
+            personas_excluded=data.get('personas_excluded', [])
         )
         log_message(f"Recherche créée: {data.get('name')}", "success")
         return jsonify({'success': True, 'search_key': search_key, 'search': search_manager.get_search(search_key)})
@@ -541,6 +961,130 @@ def api_job_types():
     """API pour récupérer les types de postes disponibles."""
     return jsonify(search_manager.get_job_types())
 
+@app.route('/api/test-application', methods=['POST'])
+def api_test_application():
+    """API pour tester une candidature sur une plateforme."""
+    data = request.json
+    try:
+        platform = data.get('platform')
+        job_url = data.get('job_url')
+        persona_email = data.get('persona_email')
+        use_cover_letter = data.get('use_cover_letter', True)
+        headless = data.get('headless', False)
+        dry_run = data.get('dry_run', True)
+        
+        if not platform or not job_url or not persona_email:
+            return jsonify({'success': False, 'error': 'Paramètres manquants'}), 400
+        
+        # Récupérer le persona
+        persona = persona_manager.get_persona_by_email(persona_email)
+        if not persona:
+            return jsonify({'success': False, 'error': 'Persona non trouvé'}), 404
+        
+        # Récupérer ou générer le CV
+        import os
+        from .cv_generator import generate_cv_for_persona, load_cvs
+        
+        safe_email = persona_email.replace('@', '_at_').replace('.', '_')
+        cv_dir = '/app/cvs'
+        cv_path = os.path.join(cv_dir, f"{safe_email}_cv.pdf")
+        
+        if not os.path.exists(cv_path):
+            # Générer le CV
+            cvs_data = load_cvs()
+            if cvs_data:
+                cv_key = list(cvs_data.keys())[0]
+                cv_data = cvs_data[cv_key]
+                cv_path = generate_cv_for_persona(
+                    persona_email=persona_email,
+                    persona_name=persona.get('name'),
+                    cv_data=cv_data
+                )
+        
+        if not cv_path or not os.path.exists(cv_path):
+            return jsonify({'success': False, 'error': 'CV non disponible'}), 400
+        
+        # Générer la lettre de motivation si nécessaire
+        cover_letter = None
+        if use_cover_letter:
+            try:
+                from .application_generator import generate_cover_letter
+                cover_letter = generate_cover_letter(
+                    job_title="Test",
+                    company_name="Test Company",
+                    persona_name=persona.get('name')
+                )
+            except Exception as e:
+                logger.warning(f"Impossible de générer la lettre de motivation: {e}")
+        
+        # Créer un job de test
+        test_job = {
+            'id': 'test_' + str(int(time.time())),
+            'title': 'Test Application',
+            'company': 'Test Company',
+            'location': 'Test Location',
+            'url': job_url
+        }
+        
+        if dry_run:
+            # Mode test : simuler sans envoyer
+            log_message(f"🧪 Test de candidature (DRY RUN) pour {persona.get('name')} sur {platform}", "info")
+            log_message(f"   URL: {job_url}", "info")
+            log_message(f"   CV: {cv_path}", "info")
+            log_message(f"   Lettre de motivation: {'Oui' if cover_letter else 'Non'}", "info")
+            
+            return jsonify({
+                'success': True,
+                'message': 'Test simulé avec succès (mode DRY RUN)',
+                'details': {
+                    'platform': platform,
+                    'persona': persona.get('name'),
+                    'cv_path': cv_path,
+                    'has_cover_letter': bool(cover_letter),
+                    'job_url': job_url
+                }
+            })
+        else:
+            # Mode réel : tester la candidature
+            from .auto_apply import apply_to_job
+            
+            success = apply_to_job(
+                job=test_job,
+                persona_email=persona_email,
+                persona_name=persona.get('name'),
+                cv_path=cv_path,
+                cover_letter=cover_letter,
+                headless=headless,
+                platform=platform
+            )
+            
+            if success:
+                log_message(f"✅ Test de candidature réussi pour {persona.get('name')} sur {platform}", "success")
+                return jsonify({
+                    'success': True,
+                    'message': 'Candidature testée avec succès',
+                    'details': {
+                        'platform': platform,
+                        'persona': persona.get('name'),
+                        'cv_path': cv_path,
+                        'has_cover_letter': bool(cover_letter)
+                    }
+                })
+            else:
+                log_message(f"❌ Test de candidature échoué pour {persona.get('name')} sur {platform}", "error")
+                return jsonify({
+                    'success': False,
+                    'error': 'La candidature a échoué. Vérifiez les logs pour plus de détails.',
+                    'details': {
+                        'platform': platform,
+                        'persona': persona.get('name')
+                    }
+                }), 500
+                
+    except Exception as e:
+        logger.error(f"Erreur test candidature: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/searches/run-multiple', methods=['POST'])
 def api_run_multiple_searches():
     """API pour lancer plusieurs recherches."""
@@ -571,21 +1115,31 @@ def api_run_multiple_searches():
             
             create_database()
             
-            # Charger les personas
-            all_personas = load_personas()
-            if selected_personas and len(selected_personas) > 0:
-                personas = {k: v for k, v in all_personas.items() if v['email'] in selected_personas}
+            # Vérifier si toutes les recherches sont standalone
+            all_standalone = all(search_manager.get_search(key).get('standalone', False) 
+                               for key in search_keys 
+                               if search_manager.get_search(key))
+            
+            # Charger les personas seulement si nécessaire
+            personas = {}
+            cv_paths = {}
+            if not all_standalone:
+                all_personas = load_personas()
+                if selected_personas and len(selected_personas) > 0:
+                    personas = {k: v for k, v in all_personas.items() if v['email'] in selected_personas}
+                else:
+                    personas = all_personas
+                
+                log_message(f"   {len(personas)} personas chargés", "info")
+                
+                # Générer les CVs seulement si nécessaire
+                log_message("📄 Génération des CVs...", "info")
+                app_state['current_step'] = 'generating_cvs'
+                socketio.emit('status_update', {'step': 'generating_cvs', 'is_running': True})
+                cv_paths = generate_cvs_from_json()
+                log_message(f"   {len(cv_paths)} CVs générés", "success")
             else:
-                personas = all_personas
-            
-            log_message(f"   {len(personas)} personas chargés", "info")
-            
-            # Générer les CVs
-            log_message("📄 Génération des CVs...", "info")
-            app_state['current_step'] = 'generating_cvs'
-            socketio.emit('status_update', {'step': 'generating_cvs', 'is_running': True})
-            cv_paths = generate_cvs_from_json()
-            log_message(f"   {len(cv_paths)} CVs générés", "success")
+                log_message("   🔍 Mode standalone: pas de personas nécessaires", "info")
             
             # Pour chaque recherche
             for search_key in search_keys:
@@ -596,99 +1150,262 @@ def api_run_multiple_searches():
                 if not search or not search.get('is_active', search.get('enabled', True)):
                     continue
                 
-                log_message(f"\n🔍 Recherche: {search['name']} ({search['query']} - {search['location']})", "info")
-                app_state['current_step'] = 'scraping'
-                socketio.emit('status_update', {'step': 'scraping', 'is_running': True})
+                # Initialiser le suivi de cette recherche
+                import time as time_module
+                search_start_time = time_module.time()
+                search_steps = []
+                search_errors = []
+                search_jobs_found = 0
+                search_jobs_filtered = 0
+                search_applications_sent = 0
+                search_applications_failed = 0
+                search_personas_used = []
                 
-                # Scraper les offres
-                jobs = scrape_indeed(query=search['query'], location=search['location'], max_results=search.get('max_results', 50))
-                log_message(f"   {len(jobs)} offres trouvées", "success")
-                
-                for job in jobs:
-                    insert_job(job)
-                
-                app_state['jobs_found'] += len(jobs)
-                
-                # Filtrer et postuler
-                log_message("🔎 Filtrage et candidature...", "info")
-                app_state['current_step'] = 'applying'
-                socketio.emit('status_update', {'step': 'applying', 'is_running': True})
-                
-                import random
-                persona_list = list(personas.items())
-                random.shuffle(persona_list)
-                
-                for persona_key, persona_info in persona_list:
-                    if not app_state['is_running']:
-                        break
+                try:
+                    log_message(f"\n{'='*60}", "info")
+                    log_message(f"🔍 DÉBUT RECHERCHE: {search['name']}", "info")
+                    log_message(f"   Requête: {search['query']} | Localisation: {search['location']}", "info")
+                    search_steps.append({'step': 'start', 'message': f"Début de la recherche: {search['name']}", 'timestamp': datetime.now().isoformat()})
                     
-                    persona_email = persona_info['email']
-                    persona_name = persona_info['name']
+                    app_state['current_step'] = 'scraping'
+                    socketio.emit('status_update', {'step': 'scraping', 'is_running': True, 'search_name': search['name']})
                     
-                    if persona_email not in cv_paths:
+                    # Étape 1: Scraping des offres
+                    log_message("📡 Étape 1/4: Scraping des offres d'emploi...", "info")
+                    search_steps.append({'step': 'scraping', 'message': "Scraping des offres d'emploi", 'timestamp': datetime.now().isoformat()})
+                    
+                    jobs = scrape_indeed(query=search['query'], location=search['location'], max_results=search.get('max_results', 50))
+                    search_jobs_found = len(jobs)
+                    log_message(f"   ✅ {len(jobs)} offres trouvées et enregistrées", "success")
+                    search_steps.append({'step': 'scraping_complete', 'message': f"{len(jobs)} offres trouvées", 'timestamp': datetime.now().isoformat()})
+                    
+                    for job in jobs:
+                        insert_job(job)
+                    
+                    app_state['jobs_found'] += len(jobs)
+                    
+                    # Si c'est une recherche standalone, on arrête ici
+                    if search.get('standalone', False):
+                        log_message("   ✅ Recherche standalone terminée: offres ajoutées à la base de données", "success")
+                        search_steps.append({'step': 'standalone_complete', 'message': 'Recherche standalone terminée', 'timestamp': datetime.now().isoformat()})
+                        
+                        search_duration = time_module.time() - search_start_time
+                        search_manager.mark_run(search_key, {
+                            'jobs_found': search_jobs_found,
+                            'jobs_filtered': 0,
+                            'applications_sent': 0,
+                            'applications_failed': 0,
+                            'personas_used': [],
+                            'errors': search_errors,
+                            'steps': search_steps,
+                            'duration_seconds': int(search_duration)
+                        })
                         continue
                     
-                    cv_path = cv_paths[persona_email]
+                    # Étape 2: Filtrage des offres
+                    log_message("🔎 Étape 2/4: Filtrage des offres...", "info")
+                    search_steps.append({'step': 'filtering', 'message': 'Filtrage des offres', 'timestamp': datetime.now().isoformat()})
+                    app_state['current_step'] = 'filtering'
+                    socketio.emit('status_update', {'step': 'filtering', 'is_running': True, 'search_name': search['name']})
                     
-                    filtered_jobs = filter_jobs(
-                        title_keywords=search.get('title_keywords', []),
-                        location_keywords=search.get('location_keywords', []),
-                        persona_email=persona_email,
-                        exclude_keywords=search.get('exclude_keywords', [])
-                    )
+                    # Étape 3: Génération des CVs (déjà fait, mais on le note)
+                    log_message("📄 Étape 3/4: CVs prêts pour candidature", "info")
+                    search_steps.append({'step': 'cvs_ready', 'message': f"{len(cv_paths)} CVs disponibles", 'timestamp': datetime.now().isoformat()})
                     
-                    if not filtered_jobs:
+                    # Étape 4: Candidatures
+                    log_message("📝 Étape 4/4: Envoi des candidatures...", "info")
+                    search_steps.append({'step': 'applying', 'message': 'Début des candidatures', 'timestamp': datetime.now().isoformat()})
+                    app_state['current_step'] = 'applying'
+                    socketio.emit('status_update', {'step': 'applying', 'is_running': True, 'search_name': search['name']})
+                    
+                    # Déterminer les personas à utiliser pour cette recherche
+                    search_personas = personas.copy()
+                    
+                    # Si des personas sont assignés à cette recherche, n'utiliser que ceux-là
+                    if search.get('personas_assigned') and len(search.get('personas_assigned', [])) > 0:
+                        assigned_emails = search.get('personas_assigned', [])
+                        search_personas = {k: v for k, v in personas.items() if v['email'] in assigned_emails}
+                        log_message(f"   👥 {len(search_personas)} personas assignés à cette recherche", "info")
+                    
+                    # Exclure les personas spécifiés
+                    if search.get('personas_excluded') and len(search.get('personas_excluded', [])) > 0:
+                        excluded_emails = search.get('personas_excluded', [])
+                        search_personas = {k: v for k, v in search_personas.items() if v['email'] not in excluded_emails}
+                        log_message(f"   🚫 {len(excluded_emails)} personas exclus de cette recherche", "info")
+                    
+                    if not search_personas:
+                        log_message(f"   ⚠️  Aucun persona disponible pour cette recherche", "warning")
                         continue
                     
-                    jobs_to_apply = filtered_jobs[:max_per_persona]
+                    import random
+                    persona_list = list(search_personas.items())
+                    random.shuffle(persona_list)
                     
-                    for job in jobs_to_apply:
+                    for persona_key, persona_info in persona_list:
                         if not app_state['is_running']:
                             break
                         
-                        cover_letter = None
-                        if use_cover_letter:
-                            try:
-                                cover_letter = generate_cover_letter(job)
-                            except Exception as e:
-                                pass
+                        persona_email = persona_info['email']
+                        persona_name = persona_info['name']
                         
-                        application_id = insert_application(
-                            job_id=job['id'],
-                            persona_email=persona_email,
-                            persona_name=persona_name,
-                            cv_path=cv_path,
-                            cover_letter=cover_letter,
-                            status='pending'
-                        )
-                        
-                        if not application_id:
+                        # Chercher un CV spécifique à la recherche
+                        import os
+                        cv_info = get_persona_cv(persona_email, search_key=search_key)
+                        if cv_info and os.path.exists(cv_info['cv_path']):
+                            cv_path = cv_info['cv_path']
+                            cv_id = cv_info['cv_id']
+                        elif persona_email in cv_paths:
+                            # Utiliser le CV par défaut
+                            cv_path = cv_paths[persona_email]
+                            cv_id = 'default'
+                        else:
+                            log_message(f"   ⚠️  {persona_name}: CV non disponible", "warning")
                             continue
                         
-                        log_message(f"   📝 {persona_name}: {job['title']} chez {job['company']}", "info")
+                        log_message(f"   👤 Traitement de {persona_name} ({persona_email})...", "info")
                         
-                        success = apply_to_job(
-                            job=job,
+                        filtered_jobs = filter_jobs(
+                            title_keywords=search.get('title_keywords', []),
+                            location_keywords=search.get('location_keywords', []),
                             persona_email=persona_email,
-                            persona_name=persona_name,
-                            cv_path=cv_path,
-                            cover_letter=cover_letter,
-                            headless=headless
+                            exclude_keywords=search.get('exclude_keywords', [])
                         )
                         
-                        if success:
-                            update_application_status(application_id, 'sent')
-                            app_state['applications_sent'] += 1
-                        else:
-                            update_application_status(application_id, 'failed')
-                            app_state['applications_failed'] += 1
+                        search_jobs_filtered += len(filtered_jobs)
                         
-                        update_stats()
-                        delay = random.uniform(delay_min, delay_max)
-                        time.sleep(delay)
-                
-                # Marquer la recherche comme exécutée
-                search_manager.mark_run(search_key)
+                        if not filtered_jobs:
+                            log_message(f"      ℹ️  Aucune offre correspondante après filtrage", "info")
+                            continue
+                        
+                        jobs_to_apply = filtered_jobs[:max_per_persona]
+                        log_message(f"      📋 {len(jobs_to_apply)} offre(s) à traiter (sur {len(filtered_jobs)} filtrées)", "info")
+                        
+                        persona_applications_sent = 0
+                        persona_applications_failed = 0
+                        
+                        for job in jobs_to_apply:
+                            if not app_state['is_running']:
+                                break
+                            
+                            try:
+                                cover_letter = None
+                                if use_cover_letter:
+                                    try:
+                                        cover_letter = generate_cover_letter(job)
+                                        log_message(f"      📄 Lettre de motivation générée pour: {job['title']}", "info")
+                                    except Exception as e:
+                                        log_message(f"      ⚠️  Erreur génération lettre: {str(e)}", "warning")
+                                        search_errors.append(f"Génération lettre pour {job['title']}: {str(e)}")
+                                
+                                application_id = insert_application(
+                                    job_id=job['id'],
+                                    persona_email=persona_email,
+                                    persona_name=persona_name,
+                                    cv_path=cv_path,
+                                    cv_id=cv_id,
+                                    search_key=search_key,
+                                    cover_letter=cover_letter,
+                                    status='pending'
+                                )
+                                
+                                if not application_id:
+                                    log_message(f"      ❌ Erreur: Impossible d'enregistrer la candidature", "error")
+                                    search_errors.append(f"Enregistrement candidature {job['title']} échoué")
+                                    continue
+                                
+                                log_message(f"      📝 Candidature: {job['title']} chez {job['company']} ({job.get('location', 'N/A')})", "info")
+                                
+                                # Détecter la plateforme depuis l'URL
+                                from .platform_handlers import detect_platform
+                                job_platform = detect_platform(job.get('url', ''))
+                                
+                                success = apply_to_job(
+                                    job=job,
+                                    persona_email=persona_email,
+                                    persona_name=persona_name,
+                                    cv_path=cv_path,
+                                    cover_letter=cover_letter,
+                                    headless=headless,
+                                    platform=job_platform
+                                )
+                                
+                                if success:
+                                    update_application_status(job['id'], persona_email, 'sent')
+                                    search_applications_sent += 1
+                                    persona_applications_sent += 1
+                                    app_state['applications_sent'] += 1
+                                    log_message(f"      ✅ Candidature envoyée avec succès", "success")
+                                else:
+                                    update_application_status(job['id'], persona_email, 'failed')
+                                    search_applications_failed += 1
+                                    persona_applications_failed += 1
+                                    app_state['applications_failed'] += 1
+                                    log_message(f"      ❌ Échec de l'envoi de la candidature", "error")
+                                    search_errors.append(f"Échec candidature {persona_name} - {job['title']}")
+                                
+                                update_stats()
+                                delay = random.uniform(delay_min, delay_max)
+                                time.sleep(delay)
+                                
+                            except Exception as e:
+                                log_message(f"      ❌ Erreur lors de la candidature: {str(e)}", "error")
+                                search_errors.append(f"Erreur candidature {persona_name} - {job.get('title', 'N/A')}: {str(e)}")
+                                search_applications_failed += 1
+                                app_state['applications_failed'] += 1
+                                continue
+                        
+                        if persona_applications_sent > 0 or persona_applications_failed > 0:
+                            search_personas_used.append({
+                                'email': persona_email,
+                                'name': persona_name,
+                                'applications_sent': persona_applications_sent,
+                                'applications_failed': persona_applications_failed
+                            })
+                            log_message(f"      📊 Résumé {persona_name}: {persona_applications_sent} envoyées, {persona_applications_failed} échouées", "info")
+                    
+                    search_steps.append({'step': 'applying_complete', 'message': f'Candidatures terminées: {search_applications_sent} envoyées, {search_applications_failed} échouées', 'timestamp': datetime.now().isoformat()})
+                    
+                    search_duration = time_module.time() - search_start_time
+                    log_message(f"\n📊 RÉSUMÉ RECHERCHE: {search['name']}", "info")
+                    log_message(f"   ⏱️  Durée: {int(search_duration)} secondes", "info")
+                    log_message(f"   📡 Offres trouvées: {search_jobs_found}", "info")
+                    log_message(f"   🔎 Offres filtrées: {search_jobs_filtered}", "info")
+                    log_message(f"   ✅ Candidatures envoyées: {search_applications_sent}", "success")
+                    log_message(f"   ❌ Candidatures échouées: {search_applications_failed}", "error" if search_applications_failed > 0 else "info")
+                    log_message(f"   👥 Personas utilisés: {len(search_personas_used)}", "info")
+                    if search_errors:
+                        log_message(f"   ⚠️  Erreurs: {len(search_errors)}", "warning")
+                    log_message(f"{'='*60}\n", "info")
+                    
+                    # Enregistrer les détails de l'exécution
+                    search_manager.mark_run(search_key, {
+                        'jobs_found': search_jobs_found,
+                        'jobs_filtered': search_jobs_filtered,
+                        'applications_sent': search_applications_sent,
+                        'applications_failed': search_applications_failed,
+                        'personas_used': search_personas_used,
+                        'errors': search_errors,
+                        'steps': search_steps,
+                        'duration_seconds': int(search_duration)
+                    })
+                    
+                except Exception as e:
+                    log_message(f"❌ ERREUR lors de l'exécution de la recherche {search['name']}: {str(e)}", "error")
+                    search_errors.append(f"Erreur fatale: {str(e)}")
+                    import traceback
+                    traceback.print_exc()
+                    
+                    search_duration = time_module.time() - search_start_time
+                    search_manager.mark_run(search_key, {
+                        'jobs_found': search_jobs_found,
+                        'jobs_filtered': search_jobs_filtered,
+                        'applications_sent': search_applications_sent,
+                        'applications_failed': search_applications_failed,
+                        'personas_used': search_personas_used,
+                        'errors': search_errors,
+                        'steps': search_steps,
+                        'duration_seconds': int(search_duration)
+                    })
             
             log_message("\n📊 Toutes les recherches terminées", "success")
             update_stats()
@@ -711,21 +1428,125 @@ def api_run_multiple_searches():
 @app.route('/api/jobs')
 def api_jobs():
     """API pour récupérer les offres d'emploi."""
-    persona_email = request.args.get('persona_email')
-    limit = request.args.get('limit', 100, type=int)
-    jobs = get_unapplied_jobs(persona_email)
-    # Limiter le nombre de résultats
-    return jsonify(jobs[:limit])
+    try:
+        unapplied = request.args.get('unapplied', 'false').lower() == 'true'
+        persona_email = request.args.get('persona_email')
+        limit = request.args.get('limit', 1000, type=int)
+        
+        if unapplied:
+            # Récupérer seulement les offres non candidatées
+            jobs = get_unapplied_jobs(persona_email)
+            if limit:
+                jobs = jobs[:limit]
+        else:
+            # Récupérer toutes les offres
+            jobs = get_all_jobs(limit=limit)
+        
+        # S'assurer que les jobs sont au format dictionnaire
+        jobs_list = []
+        for job in jobs:
+            if isinstance(job, dict):
+                # Vérifier si le job a déjà été candidaté
+                job_id = job.get('id')
+                applied = False
+                if job_id:
+                    conn = sqlite3.connect(get_db_path())
+                    c = conn.cursor()
+                    c.execute("SELECT COUNT(*) FROM applications WHERE job_id = ?", (job_id,))
+                    applied = c.fetchone()[0] > 0
+                    conn.close()
+                
+                job_dict = {
+                    'id': job.get('id'),
+                    'title': job.get('title'),
+                    'company': job.get('company'),
+                    'location': job.get('location'),
+                    'url': job.get('url'),
+                    'platform': job.get('platform', 'indeed'),
+                    'description': job.get('description'),
+                    'created_at': job.get('created_at'),
+                    'applied': applied
+                }
+                jobs_list.append(job_dict)
+            else:
+                # Format tuple (ancien format)
+                job_dict = {
+                    'id': job[0] if len(job) > 0 else None,
+                    'title': job[1] if len(job) > 1 else None,
+                    'company': job[2] if len(job) > 2 else None,
+                    'location': job[3] if len(job) > 3 else None,
+                    'url': job[4] if len(job) > 4 else None,
+                    'platform': job[5] if len(job) > 5 else 'indeed',
+                    'description': job[5] if len(job) > 5 else None,
+                    'created_at': job[6] if len(job) > 6 else None,
+                    'applied': False
+                }
+                # Vérifier si le job a été candidaté
+                if job_dict['id']:
+                    conn = sqlite3.connect(get_db_path())
+                    c = conn.cursor()
+                    c.execute("SELECT COUNT(*) FROM applications WHERE job_id = ?", (job_dict['id'],))
+                    job_dict['applied'] = c.fetchone()[0] > 0
+                    conn.close()
+                jobs_list.append(job_dict)
+        
+        return jsonify(jobs_list)
+    except Exception as e:
+        logger.error(f"Erreur API jobs: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/stats')
 def api_stats():
-    """API pour récupérer les statistiques."""
-    return jsonify(get_statistics())
+    """Retourne les statistiques globales et de session."""
+    # Récupérer les stats de la base de données
+    db_stats = get_statistics()
+    
+    # Ajouter les stats de session depuis app_state
+    stats = {
+        **db_stats,
+        # Statistiques de session actuelle
+        'jobs_found': app_state.get('jobs_found', 0),
+        'applications_sent': app_state.get('applications_sent', 0),
+        'applications_failed': app_state.get('applications_failed', 0)
+    }
+    
+    # Sauvegarder dans l'historique
+    try:
+        insert_historical_stat(db_stats)
+    except Exception as e:
+        logger.error(f"Erreur lors de la sauvegarde des stats: {e}")
+    
+    return jsonify(stats)
+
+@app.route('/api/stats/historical')
+def api_historical_stats():
+    """Récupère les statistiques historiques."""
+    try:
+        days = request.args.get('days', 30, type=int)
+        exclude_test = request.args.get('exclude_test', 'false').lower() == 'true'
+        
+        stats = get_historical_stats(days=days, exclude_test=exclude_test)
+        return jsonify(stats)
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des stats historiques: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/logs')
 def api_logs():
-    """API pour récupérer les logs."""
-    return jsonify(app_state['logs'])
+    """Récupère les logs depuis la base de données."""
+    try:
+        limit = request.args.get('limit', 1000, type=int)
+        level = request.args.get('level', None)
+        category = request.args.get('category', None)
+        exclude_test = request.args.get('exclude_test', 'false').lower() == 'true'
+        
+        logs = get_logs(limit=limit, level=level, category=category, exclude_test=exclude_test)
+        return jsonify(logs)
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des logs: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # Routes pour les actions
 @app.route('/api/generate_cvs', methods=['POST'])
@@ -953,6 +1774,38 @@ def api_start_auto_apply():
     
     return jsonify({'success': True, 'message': 'Processus démarré'})
 
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    """Sert les fichiers statiques."""
+    try:
+        static_dir = '/app/static'
+        file_path = os.path.join(static_dir, filename)
+        
+        # Vérifier que le fichier existe et est un fichier (pas un dossier)
+        if not os.path.exists(file_path) or not os.path.isfile(file_path):
+            logger.warning(f"Fichier statique non trouvé: {file_path}")
+            return "Fichier statique non trouvé", 404
+        
+        # Déterminer le type MIME selon l'extension
+        mimetype = None
+        if filename.endswith('.js'):
+            mimetype = 'application/javascript; charset=utf-8'
+        elif filename.endswith('.css'):
+            mimetype = 'text/css; charset=utf-8'
+        elif filename.endswith('.png'):
+            mimetype = 'image/png'
+        elif filename.endswith('.jpg') or filename.endswith('.jpeg'):
+            mimetype = 'image/jpeg'
+        elif filename.endswith('.svg'):
+            mimetype = 'image/svg+xml'
+        elif filename.endswith('.json'):
+            mimetype = 'application/json'
+        
+        return send_from_directory(static_dir, filename, mimetype=mimetype)
+    except Exception as e:
+        logger.error(f"Erreur serveur fichier statique {filename}: {e}")
+        return f"Erreur: {str(e)}", 500
+
 @app.route('/api/stop_auto_apply', methods=['POST'])
 def api_stop_auto_apply():
     """Arrête le processus de candidature automatique."""
@@ -977,6 +1830,38 @@ def api_status():
         'applications_failed': app_state.get('applications_failed', 0),
         'container_status': 'running'  # Le conteneur fonctionne
     })
+
+@app.route('/api/test-data/delete', methods=['POST'])
+def api_delete_test_data():
+    """Supprime toutes les données de test."""
+    try:
+        result = delete_test_data()
+        if result:
+            log_message(f"Données de test supprimées: {result}", "info")
+            return jsonify({'success': True, 'deleted': result})
+        return jsonify({'error': 'Erreur lors de la suppression'}), 500
+    except Exception as e:
+        logger.error(f"Erreur lors de la suppression des données de test: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/test-data/mark', methods=['POST'])
+def api_mark_test_data():
+    """Marque des données comme test ou non."""
+    try:
+        data = request.json
+        table = data.get('table')  # 'jobs', 'applications', 'emails', 'logs'
+        ids = data.get('ids', [])
+        is_test = data.get('is_test', True)
+        
+        if not table or not ids:
+            return jsonify({'error': 'Table et ids requis'}), 400
+        
+        count = mark_as_test_data(table, ids, is_test)
+        log_message(f"{count} enregistrement(s) marqué(s) comme {'test' if is_test else 'production'}", "info")
+        return jsonify({'success': True, 'count': count})
+    except Exception as e:
+        logger.error(f"Erreur lors du marquage des données: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # WebSocket events
 @socketio.on('connect')

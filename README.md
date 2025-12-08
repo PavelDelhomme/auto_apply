@@ -31,10 +31,17 @@ auto_apply/
 ├── Dockerfile           # Image Docker
 ├── requirements.txt     # Dépendances Python
 ├── Makefile            # Commandes utiles
-├── personas.json       # Configuration des personas
-├── cvs.json           # Modèles de CVs
-├── cv_template.html   # Template HTML pour CVs
-├── cover_letter_template.txt  # Template de lettre de motivation
+├── config/            # Fichiers de configuration
+│   ├── personas.json  # Configuration des personas
+│   ├── cvs.json       # Modèles de CVs
+│   └── searches.json  # Recherches sauvegardées
+├── templates/         # Templates
+│   ├── dashboard.html # Interface web principale
+│   ├── index.html     # Page de statistiques
+│   ├── cv/            # Templates de CV
+│   │   └── cv_template.html
+│   └── letters/       # Templates de lettres
+│       └── cover_letter_template.txt
 └── README.md          # Ce fichier
 ```
 
@@ -73,32 +80,108 @@ make test          # Tester la connexion
 
 Toute la documentation est disponible dans le dossier `docs/` :
 
+- **[Guide Complet des Personas](docs/GUIDE_COMPLET_PERSONAS.md)** - Tout sur les personas, variantes, CVs multiples
+- `docs/AMELIORATIONS_LOGS_STATS.md` - Système de logs et statistiques historiques
+- `docs/AMELIORATIONS_RECHERCHES_PERSONAS.md` - Recherches avec personas assignés
 - `docs/GUIDE_COMPLET.md` - Guide d'utilisation complet
 - `docs/AMELIORATIONS.md` - Liste des améliorations
 - `docs/QUICKSTART.md` - Guide de démarrage rapide
 - `docs/MAKEFILE.md` - Documentation du Makefile
 - `docs/DOCKER.md` - Guide Docker
 
+### 🎓 Concepts Importants
+
+#### Variantes de Personas
+
+Une **variante** (ou **alias**) est un persona qui hérite des caractéristiques d'un persona de base, mais avec un nom et email différents. Cela permet de :
+- Multiplier les candidatures à la même offre
+- Tester différentes approches
+- Éviter la détection
+
+**Exemple** :
+- Persona de base : `Christian Gaillard` (christian.gaillard@gmx.com)
+- Variante 1 : `Georges Fabre` (george.fabre@gmx.com) - alias: true, parent: christian.gaillard@gmx.com
+- Variante 2 : `Hugo Germain` (hugo.germain@gmx.com) - alias: true, parent: christian.gaillard@gmx.com
+
+#### CVs Multiples
+
+Un persona peut avoir plusieurs CVs :
+- **CV par défaut** : Utilisé si aucun CV spécifique n'est trouvé
+- **CV par recherche** : CV spécialisé pour une recherche (`search_key`)
+- **CVs avec ID** : Plusieurs CVs avec des IDs différents (`cv_id`)
+
+**Exemple** :
+- CV par défaut : `christian.gaillard_cv.pdf`
+- CV pour recherche Python : `christian.gaillard_python_senior_python_cv.pdf`
+- CV pour recherche Django : `christian.gaillard_django_dev_django_cv.pdf`
+
+#### Structure Complète d'un Persona
+
+```json
+{
+  "name": "Christian Gaillard",
+  "email": "christian.gaillard@gmx.com",
+  "password": "mot_de_passe",
+  "alias": false,
+  "parent": null,
+  "skills": ["Python", "JavaScript", "Django", "React"],
+  "experience_years": 5,
+  "education": [
+    {
+      "degree": "Master Informatique",
+      "school": "Université de Rennes",
+      "dates": "2015-2020"
+    }
+  ],
+  "languages": ["Français", "Anglais"],
+  "location": "Rennes, France",
+  "phone": "+33 6 12 34 56 78",
+  "linkedin": "https://linkedin.com/in/christian-gaillard",
+  "github": "https://github.com/christian-gaillard",
+  "portfolio": "https://christian-gaillard.dev",
+  "notes": "Spécialisé en développement web full-stack"
+}
+```
+
 ## ✨ Fonctionnalités
 
 ### 🎯 Gestion des Personas
-- Créer, modifier, supprimer des personas
-- Créer des variantes automatiquement
-- Tester les personas
+- Créer, modifier, supprimer des personas avec détails complets
+- **Variantes** : Créer des alias qui héritent d'un persona de base
+- **CVs multiples** : Un CV par défaut + CVs spécifiques par recherche
+- Tester les personas et leurs emails
 - Sélection multiple pour les candidatures
+- Gestion complète des informations (compétences, expérience, éducation, etc.)
 
 ### 🔍 Recherches Multiples
-- Créer plusieurs recherches d'emploi
+- Créer plusieurs recherches d'emploi avec critères détaillés
+- **Assignation de personas** : Spécifier quels personas utiliser pour chaque recherche
 - Types de postes variés (développeur, devops, data, etc.)
-- Lancer plusieurs recherches simultanément
-- Paramètres personnalisés par recherche
+- Lancer plusieurs recherches simultanément depuis les paramètres
+- Paramètres personnalisés par recherche (salaire, contrat, télétravail, etc.)
+- Mode standalone (scraper uniquement, sans personas)
+
+### 📄 Système de CVs Avancé
+- **CV par défaut** : CV généraliste pour chaque persona
+- **CVs par recherche** : CV spécialisé pour une recherche spécifique
+- **CVs multiples** : Plusieurs CVs avec IDs différents
+- Génération automatique avec photos uniques
+- Stockage dans la base de données pour traçabilité
+
+### 📧 Gestion des Emails
+- Récupération automatique depuis IMAP
+- Test de connexion pour chaque persona
+- Stockage des emails en base de données
+- Marquage comme lu/non lu
+- Interface de visualisation complète
 
 ### 📊 Interface Web
-- Dashboard en temps réel
-- Statistiques détaillées
-- Logs en direct
+- Dashboard en temps réel avec WebSocket
+- Statistiques détaillées et historiques
+- Logs persistants avec filtres
 - Mode sombre/clair
 - Drawer avec onglets organisés
+- Gestion complète des personas, recherches, offres, emails
 
 ### 💻 Ligne de Commande
 - Interface CLI complète

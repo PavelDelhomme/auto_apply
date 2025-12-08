@@ -7,7 +7,8 @@ import pdfkit
 
 def get_persona_photo(persona_email, photos_dir="/app/photos"):
     """
-    Récupère ou génère une photo pour un persona depuis thispersondoesnotexist.com.
+    Récupère ou génère une photo pour un persona.
+    Utilise randomuser.me avec filtrage par âge pour éviter les enfants et personnes très âgées.
     Utilise un hash de l'email pour avoir toujours la même photo pour le même persona.
     :param persona_email: Email du persona.
     :param photos_dir: Dossier pour stocker les photos.
@@ -26,31 +27,69 @@ def get_persona_photo(persona_email, photos_dir="/app/photos"):
     
     # Sinon, télécharger une nouvelle photo
     try:
-        # Utiliser le hash comme seed pour obtenir une photo différente par persona
-        # thispersondoesnotexist.com génère des photos aléatoires, mais on peut utiliser l'ID
-        # On utilise le hash modulo un grand nombre pour avoir un ID
-        photo_id = int(email_hash[:8], 16) % 1000000
-        photo_url = f"https://thispersondoesnotexist.com/"
+        # Utiliser randomuser.me avec seed pour avoir une photo stable par persona
+        # Filtrage par âge : entre 25 et 55 ans (adultes professionnels)
+        # Le seed est basé sur le hash de l'email pour avoir toujours la même photo
+        seed = email_hash[:16]  # Utiliser les 16 premiers caractères du hash comme seed
         
-        # Télécharger la photo
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
-        response = requests.get(photo_url, headers=headers, timeout=10)
         
-        if response.status_code == 200:
-            with open(photo_path, 'wb') as f:
-                f.write(response.content)
-            print(f"Photo téléchargée pour {persona_email}: {photo_path}")
-            return photo_path
-        else:
-            print(f"⚠️  Impossible de télécharger la photo (HTTP {response.status_code})")
-            return None
+        # Essayer plusieurs fois avec des seeds différents jusqu'à trouver une photo avec un âge approprié
+        max_attempts = 10
+        for attempt in range(max_attempts):
+            # Générer un seed unique pour chaque tentative
+            if attempt == 0:
+                current_seed = seed
+            else:
+                # Modifier le seed pour chaque tentative
+                current_seed = hashlib.md5((email_hash + str(attempt)).encode()).hexdigest()[:16]
+            
+            randomuser_url = f"https://randomuser.me/api/?seed={current_seed}&results=1"
+            
+            try:
+                # Récupérer les données de l'utilisateur
+                response = requests.get(randomuser_url, headers=headers, timeout=10)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get('results') and len(data['results']) > 0:
+                        user = data['results'][0]
+                        age = user.get('dob', {}).get('age', 0)
+                        
+                        # Vérifier que l'âge est approprié (25-55 ans)
+                        if 25 <= age <= 55:
+                            photo_url = user.get('picture', {}).get('large', '')
+                            if photo_url:
+                                # Télécharger la photo
+                                photo_response = requests.get(photo_url, headers=headers, timeout=10)
+                                if photo_response.status_code == 200:
+                                    # Vérifier que c'est bien une image (pas une erreur HTML)
+                                    content_type = photo_response.headers.get('content-type', '')
+                                    if 'image' in content_type:
+                                        with open(photo_path, 'wb') as f:
+                                            f.write(photo_response.content)
+                                        print(f"✅ Photo téléchargée pour {persona_email} (âge: {age} ans, tentative {attempt + 1}): {photo_path}")
+                                        return photo_path
+                                    else:
+                                        print(f"⚠️  Réponse n'est pas une image pour {persona_email} (tentative {attempt + 1})")
+                        else:
+                            print(f"⚠️  Photo avec âge inapproprié ({age} ans) pour {persona_email} (tentative {attempt + 1})")
+            except Exception as e:
+                print(f"⚠️  Erreur lors de la tentative {attempt + 1} pour {persona_email}: {e}")
+                continue
+        
+        # Si aucune photo appropriée n'a été trouvée après toutes les tentatives
+        print(f"⚠️  Impossible de trouver une photo avec un âge approprié pour {persona_email} après {max_attempts} tentatives")
+        return None
+            
     except Exception as e:
         print(f"⚠️  Erreur lors du téléchargement de la photo: {e}")
         return None
 
-def generate_cv_for_persona(persona_email, persona_name, cv_data, template_file="/app/cv_template.html", output_dir="/app/cvs"):
+def generate_cv_for_persona(persona_email, persona_name, cv_data, template_file="/app/templates/cv/cv_template.html", 
+                            output_dir="/app/cvs", search_key=None, cv_id=None):
     """
     Génère un CV au format PDF pour un persona spécifique.
     :param persona_email: Email du persona.
@@ -58,6 +97,8 @@ def generate_cv_for_persona(persona_email, persona_name, cv_data, template_file=
     :param cv_data: Dictionnaire contenant les données du CV.
     :param template_file: Chemin du fichier HTML servant de modèle.
     :param output_dir: Dossier de sortie pour les CVs.
+    :param search_key: Clé de la recherche (optionnel, pour CV spécifique à une recherche).
+    :param cv_id: ID du CV (optionnel, pour identifier le CV).
     :return: Chemin du fichier PDF généré.
     """
     # Créer le dossier de sortie s'il n'existe pas
@@ -83,7 +124,16 @@ def generate_cv_for_persona(persona_email, persona_name, cv_data, template_file=
     
     # Nom du fichier de sortie
     safe_email = persona_email.replace('@', '_at_').replace('.', '_')
-    output_file = os.path.join(output_dir, f"{safe_email}_cv.pdf")
+    if search_key and cv_id:
+        # CV spécifique à une recherche
+        safe_search = search_key.replace(' ', '_').replace('/', '_')
+        output_file = os.path.join(output_dir, f"{safe_email}_{safe_search}_{cv_id}_cv.pdf")
+    elif cv_id:
+        # CV avec ID spécifique
+        output_file = os.path.join(output_dir, f"{safe_email}_{cv_id}_cv.pdf")
+    else:
+        # CV par défaut
+        output_file = os.path.join(output_dir, f"{safe_email}_cv.pdf")
     
     try:
         # Convertir le HTML en PDF
@@ -122,7 +172,7 @@ def generate_cv_for_persona(persona_email, persona_name, cv_data, template_file=
         except:
             return None
 
-def generate_cvs_from_json(cvs_file="/app/cvs.json", personas_file="/app/personas.json", template_file="/app/cv_template.html"):
+def generate_cvs_from_json(cvs_file="/app/config/cvs.json", personas_file="/app/config/personas.json", template_file="/app/templates/cv/cv_template.html"):
     """
     Génère des CVs pour tous les personas à partir des données JSON.
     :param cvs_file: Fichier JSON contenant les données des CVs.

@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Auto Apply{% endblock %}</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="/static/css/components.css">
+    <script src="/static/js/components.js"></script>
+    {% block extra_css %}{% endblock %}
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --bg-card: white;
+            --text-primary: #333;
+            --text-secondary: #666;
+            --text-title: #667eea;
+            --border-color: #e5e7eb;
+            --shadow: 0 4px 6px rgba(0,0,0,0.1);
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --drawer-width: 300px;
+        }
+        
+        [data-theme="dark"] {
+            --bg-primary: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            --bg-card: #1e293b;
+            --text-primary: #e5e7eb;
+            --text-secondary: #94a3b8;
+            --text-title: #818cf8;
+            --border-color: #334155;
+            --shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            min-height: 100vh;
+            color: var(--text-primary);
+            transition: background 0.3s ease, color 0.3s ease;
+            overflow-x: hidden;
+        }
+        
+        /* Drawer (Menu latéral) */
+        .drawer {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: var(--drawer-width);
+            height: 100vh;
+            background: var(--bg-card);
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .drawer.open {
+            transform: translateX(0);
+        }
+        
+        .drawer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--border-color);
+        }
+        
+        .drawer-header h2 {
+            color: var(--text-title);
+            font-size: 1.3em;
+        }
+        
+        .drawer-close {
+            background: transparent;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+        
+        .drawer-item {
+            padding: 12px;
+            margin: 5px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+        
+        .drawer-item:hover {
+            background: var(--border-color);
+        }
+        
+        .drawer-item.active {
+            background: var(--text-title);
+            color: white;
+        }
+        
+        .drawer-item-icon {
+            font-size: 1.2em;
+        }
+        
+        /* Animations pour les cartes de stats */
+        @keyframes statPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .stat-card {
+            animation: statPulse 3s ease-in-out infinite;
+        }
+        
+        .stat-card:nth-child(1) { animation-delay: 0s; }
+        .stat-card:nth-child(2) { animation-delay: 0.5s; }
+        .stat-card:nth-child(3) { animation-delay: 1s; }
+        .stat-card:nth-child(4) { animation-delay: 1.5s; }
+        
+        /* Menu FAB (Floating Action Button) */
+        .fab-container {
+            position: fixed;
+            right: 25px;
+            bottom: 50px;
+            z-index: 1000;
+        }
+        
+        .fab-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            margin-bottom: 25px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(30px) scale(0.85);
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            pointer-events: none;
+            align-items: flex-start;
+        }
+        
+        .fab-menu.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0) scale(1);
+            pointer-events: all;
+        }
+        
+        .fab-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px 24px;
+            border: none;
+            border-radius: 50px;
+            color: white;
+            font-weight: 700;
+            font-size: 1em;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            min-width: 220px;
+            justify-content: flex-start;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .fab-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .fab-item:hover::before {
+            left: 100%;
+        }
+        
+        .fab-item:hover {
+            transform: translateX(8px) scale(1.08);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35), 0 0 0 2px rgba(255, 255, 255, 0.2);
+        }
+        
+        .fab-item:active {
+            transform: translateX(8px) scale(1.02);
+        }
+        
+        .fab-icon {
+            font-size: 1.4em;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .fab-item:hover .fab-icon {
+            background: rgba(255, 255, 255, 0.35);
+            transform: rotate(360deg) scale(1.1);
+        }
+        
+        .fab-label {
+            flex: 1;
+            text-align: left;
+            font-size: 0.95em;
+            letter-spacing: 0.3px;
+        }
+        
+        .fab-main {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            background: linear-gradient(135deg, var(--text-title) 0%, #5b21b6 100%);
+            color: white;
+            font-size: 2em;
+            cursor: pointer;
+            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.5), 0 0 0 0 rgba(102, 126, 234, 0.7);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 1001;
+            overflow: hidden;
+        }
+        
+        .fab-main::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s ease, height 0.6s ease;
+        }
+        
+        .fab-main:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        .fab-main:hover {
+            transform: scale(1.15) rotate(90deg);
+            box-shadow: 0 12px 40px rgba(102, 126, 234, 0.6), 0 0 0 8px rgba(102, 126, 234, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .fab-main.active {
+            transform: rotate(45deg) scale(1.1);
+            background: linear-gradient(135deg, var(--error) 0%, #dc2626 100%);
+            border-color: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 30px rgba(220, 38, 38, 0.5), 0 0 0 0 rgba(220, 38, 38, 0.7);
+        }
+        
+        .fab-main.active:hover {
+            box-shadow: 0 12px 40px rgba(220, 38, 38, 0.6), 0 0 0 8px rgba(220, 38, 38, 0.3);
+        }
+        
+        .fab-main-icon {
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 1;
+        }
+        
+        @media (max-width: 768px) {
+            .fab-container {
+                right: 20px;
+                bottom: 25px;
+            }
+            
+            .fab-main {
+                width: 64px;
+                height: 64px;
+                font-size: 1.8em;
+                border-width: 3px;
+            }
+            
+            .fab-item {
+                min-width: 200px;
+                padding: 14px 20px;
+                font-size: 0.9em;
+            }
+            
+            .fab-menu {
+                gap: 15px;
+            }
+        }
+        
+        .drawer-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            z-index: 999;
+        }
+        
+        .drawer-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        /* Contenu principal */
+        .main-content {
+            margin-left: 0;
+            transition: margin-left 0.3s ease;
+            padding: 20px;
+        }
+        
+        .main-content.drawer-open {
+            margin-left: var(--drawer-width);
+        }
+        
+        .header {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .menu-toggle {
+            background: var(--text-title);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.2em;
+            transition: opacity 0.3s ease;
+        }
+        
+        .menu-toggle:hover {
+            opacity: 0.9;
+        }
+        
+        .header-left h1 {
+            color: var(--text-title);
+            margin: 0;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-indicator.active {
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+        }
+        
+        .status-indicator.inactive {
+            background: var(--error);
+        }
+        
+        .theme-toggle {
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 50px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 1.2em;
+            transition: all 0.3s ease;
+            color: var(--text-primary);
+        }
+        
+        .theme-toggle:hover {
+            transform: scale(1.05);
+            box-shadow: var(--shadow);
+        }
+        
+        .card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            transition: background 0.3s ease, box-shadow 0.3s ease;
+            margin-bottom: 20px;
+        }
+        
+        .card h2 {
+            color: var(--text-title);
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: var(--text-title);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: var(--error);
+            color: white;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        @media (max-width: 768px) {
+            .drawer {
+                width: 100%;
+            }
+            
+            .main-content.drawer-open {
+                margin-left: 0;
+            }
+        }
+        
+        {% block extra_style %}{% endblock %}
+    </style>
+</head>
+<body>
+    <!-- Drawer (Menu latéral) -->
+    <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+    <div class="drawer" id="drawer">
+        <div class="drawer-header">
+            <h2>📋 Menu</h2>
+            <button class="drawer-close" onclick="closeDrawer()">✕</button>
+        </div>
+        
+        <div class="drawer-section">
+            <a href="/" class="drawer-item {% if request.endpoint == 'index' or request.endpoint == 'dashboard_page' %}active{% endif %}">
+                <span class="drawer-item-icon">📊</span>
+                <span>Dashboard</span>
+            </a>
+            <a href="/personas" class="drawer-item {% if request.endpoint == 'personas_page' %}active{% endif %}">
+                <span class="drawer-item-icon">👥</span>
+                <span>Personas</span>
+            </a>
+            <a href="/searches" class="drawer-item {% if request.endpoint == 'searches_page' %}active{% endif %}">
+                <span class="drawer-item-icon">🔍</span>
+                <span>Recherches</span>
+            </a>
+            <a href="/jobs" class="drawer-item {% if request.endpoint == 'jobs_page' %}active{% endif %}">
+                <span class="drawer-item-icon">💼</span>
+                <span>Offres d'emploi</span>
+            </a>
+            <a href="/emails" class="drawer-item {% if request.endpoint == 'emails_page' %}active{% endif %}">
+                <span class="drawer-item-icon">📧</span>
+                <span>Gestion Emails</span>
+            </a>
+            <a href="/stats" class="drawer-item {% if request.endpoint == 'stats_page' %}active{% endif %}">
+                <span class="drawer-item-icon">📈</span>
+                <span>Statistiques</span>
+            </a>
+            <a href="/settings" class="drawer-item {% if request.endpoint == 'settings_page' %}active{% endif %}">
+                <span class="drawer-item-icon">⚙️</span>
+                <span>Paramètres</span>
+            </a>
+            <a href="/logs" class="drawer-item {% if request.endpoint == 'logs_page' %}active{% endif %}">
+                <span class="drawer-item-icon">📋</span>
+                <span>Logs & Historique</span>
+            </a>
+        </div>
+        
+        <div class="drawer-section">
+            <h3 style="color: var(--text-title); margin-bottom: 20px; font-size: 1.1em; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.3em;">📊</span>
+                <span>Statistiques Rapides</span>
+            </h3>
+            <div style="display: grid; gap: 12px;">
+                <!-- Carte Offres -->
+                <div class="stat-card" style="
+                    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+                    border: 2px solid rgba(102, 126, 234, 0.3);
+                    border-radius: 12px;
+                    padding: 16px;
+                    position: relative;
+                    overflow: hidden;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+                " onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(102, 126, 234, 0.25)'" 
+                   onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.15)'">
+                    <div style="position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%); border-radius: 50%; opacity: 0.5;"></div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 1;">
+                        <div>
+                            <div style="font-size: 0.85em; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">💼 Offres</div>
+                            <div id="drawerTotalJobs" style="font-size: 2em; font-weight: 800; color: var(--text-title); line-height: 1; background: linear-gradient(135deg, var(--text-title) 0%, #5b21b6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">0</div>
+                        </div>
+                        <div style="font-size: 2.5em; opacity: 0.3;">💼</div>
+                    </div>
+                </div>
+                
+                <!-- Carte Candidatures -->
+                <div class="stat-card" style="
+                    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.1) 100%);
+                    border: 2px solid rgba(59, 130, 246, 0.3);
+                    border-radius: 12px;
+                    padding: 16px;
+                    position: relative;
+                    overflow: hidden;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+                " onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(59, 130, 246, 0.25)'" 
+                   onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.15)'">
+                    <div style="position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(37, 99, 235, 0.2) 100%); border-radius: 50%; opacity: 0.5;"></div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 1;">
+                        <div>
+                            <div style="font-size: 0.85em; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">📤 Total</div>
+                            <div id="drawerTotalApps" style="font-size: 2em; font-weight: 800; color: var(--info); line-height: 1; background: linear-gradient(135deg, var(--info) 0%, #2563eb 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">0</div>
+                        </div>
+                        <div style="font-size: 2.5em; opacity: 0.3;">📤</div>
+                    </div>
+                </div>
+                
+                <!-- Carte Envoyées -->
+                <div class="stat-card" style="
+                    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+                    border: 2px solid rgba(16, 185, 129, 0.3);
+                    border-radius: 12px;
+                    padding: 16px;
+                    position: relative;
+                    overflow: hidden;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+                " onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(16, 185, 129, 0.25)'" 
+                   onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.15)'">
+                    <div style="position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%); border-radius: 50%; opacity: 0.5;"></div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 1;">
+                        <div>
+                            <div style="font-size: 0.85em; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">✅ Envoyées</div>
+                            <div id="drawerSent" style="font-size: 2em; font-weight: 800; color: var(--success); line-height: 1; background: linear-gradient(135deg, var(--success) 0%, #059669 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">0</div>
+                        </div>
+                        <div style="font-size: 2.5em; opacity: 0.3;">✅</div>
+                    </div>
+                </div>
+                
+                <!-- Carte Échouées -->
+                <div class="stat-card" style="
+                    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%);
+                    border: 2px solid rgba(239, 68, 68, 0.3);
+                    border-radius: 12px;
+                    padding: 16px;
+                    position: relative;
+                    overflow: hidden;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+                " onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(239, 68, 68, 0.25)'" 
+                   onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(239, 68, 68, 0.15)'">
+                    <div style="position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.2) 100%); border-radius: 50%; opacity: 0.5;"></div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 1;">
+                        <div>
+                            <div style="font-size: 0.85em; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">❌ Échouées</div>
+                            <div id="drawerFailed" style="font-size: 2em; font-weight: 800; color: var(--error); line-height: 1; background: linear-gradient(135deg, var(--error) 0%, #dc2626 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">0</div>
+                        </div>
+                        <div style="font-size: 2.5em; opacity: 0.3;">❌</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Contenu principal -->
+    <div class="main-content" id="mainContent">
+        <div class="header">
+            <div class="header-left">
+                <button class="menu-toggle" onclick="toggleDrawer()">☰</button>
+                <div>
+                    <h1>🚀 Auto Apply</h1>
+                    <p style="margin: 5px 0 0 0; font-size: 0.9em;">
+                        <span class="status-indicator" id="statusIndicator"></span>
+                        <span id="statusText">Connexion...</span>
+                    </p>
+                </div>
+            </div>
+            <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙</button>
+        </div>
+        
+        {% block content %}{% endblock %}
+    </div>
+    
+    <!-- Menu FAB (Floating Action Button) -->
+    <div class="fab-container" id="fabContainer">
+        <div class="fab-menu" id="fabMenu">
+            <button class="fab-item" onclick="stopAutoApply(); closeFabMenu();" title="Arrêter" style="background: linear-gradient(135deg, var(--error) 0%, #dc2626 100%);">
+                <span class="fab-icon">⏹️</span>
+                <span class="fab-label">Arrêter</span>
+            </button>
+            <button class="fab-item" onclick="showTestApplicationModal(); closeFabMenu();" title="Tester Candidature" style="background: linear-gradient(135deg, var(--info) 0%, #2563eb 100%);">
+                <span class="fab-icon">🧪</span>
+                <span class="fab-label">Tester Candidature</span>
+            </button>
+            <button class="fab-item" onclick="showAutoApplyModal(); closeFabMenu();" title="Lancer Auto Apply" style="background: linear-gradient(135deg, var(--success) 0%, #059669 100%);">
+                <span class="fab-icon">🚀</span>
+                <span class="fab-label">Lancer Auto Apply</span>
+            </button>
+            <button class="fab-item" onclick="scrapeJobs(); closeFabMenu();" title="Rechercher des offres" style="background: linear-gradient(135deg, var(--text-title) 0%, #5b21b6 100%);">
+                <span class="fab-icon">🔍</span>
+                <span class="fab-label">Rechercher des offres</span>
+            </button>
+            <button class="fab-item" onclick="generateCVs(); closeFabMenu();" title="Générer les CVs" style="background: linear-gradient(135deg, var(--warning) 0%, #d97706 100%);">
+                <span class="fab-icon">📄</span>
+                <span class="fab-label">Générer les CVs</span>
+            </button>
+        </div>
+        <button class="fab-main" id="fabMain" onclick="toggleFabMenu()">
+            <span class="fab-main-icon" id="fabMainIcon">⚙️</span>
+        </button>
+    </div>
+    
+    {% block modals %}{% endblock %}
+    
+    <script>
+        const socket = io();
+        let isRunning = false;
+        
+        // Gestion du drawer
+        function toggleDrawer() {
+            const drawer = document.getElementById('drawer');
+            const overlay = document.getElementById('drawerOverlay');
+            const mainContent = document.getElementById('mainContent');
+            
+            drawer.classList.toggle('open');
+            overlay.classList.toggle('active');
+            mainContent.classList.toggle('drawer-open');
+        }
+        
+        function closeDrawer() {
+            const drawer = document.getElementById('drawer');
+            const overlay = document.getElementById('drawerOverlay');
+            const mainContent = document.getElementById('mainContent');
+            
+            drawer.classList.remove('open');
+            overlay.classList.remove('active');
+            mainContent.classList.remove('drawer-open');
+        }
+        
+        // Gestion du thème
+        function getTheme() {
+            return localStorage.getItem('theme') || 'light';
+        }
+        
+        function setTheme(theme) {
+            localStorage.setItem('theme', theme);
+            document.documentElement.setAttribute('data-theme', theme);
+            const themeToggle = document.getElementById('themeToggle');
+            if (themeToggle) {
+                themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+            }
+        }
+        
+        function toggleTheme() {
+            const currentTheme = getTheme();
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            setTheme(newTheme);
+        }
+        
+        // Initialiser le thème
+        setTheme(getTheme());
+        
+        // WebSocket events
+        socket.on('connect', () => {
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            if (statusIndicator) {
+                statusIndicator.classList.add('active');
+                statusIndicator.classList.remove('inactive');
+            }
+            if (statusText) {
+                statusText.textContent = 'Prêt';
+            }
+        });
+        
+        socket.on('disconnect', () => {
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            if (statusIndicator) {
+                statusIndicator.classList.remove('active');
+                statusIndicator.classList.add('inactive');
+            }
+            if (statusText) {
+                statusText.textContent = 'Déconnecté';
+            }
+        });
+        
+        socket.on('log', (data) => {
+            if (typeof addLog === 'function') {
+                addLog(data.message, data.level, data.timestamp);
+            }
+        });
+        
+        socket.on('stats_update', (stats) => {
+            if (typeof updateStats === 'function') {
+                updateStats(stats);
+            }
+            // Mettre à jour les stats du drawer
+            const drawerTotalJobs = document.getElementById('drawerTotalJobs');
+            const drawerTotalApps = document.getElementById('drawerTotalApps');
+            const drawerSent = document.getElementById('drawerSent');
+            const drawerFailed = document.getElementById('drawerFailed');
+            
+            if (drawerTotalJobs) drawerTotalJobs.textContent = stats.total_jobs || 0;
+            if (drawerTotalApps) drawerTotalApps.textContent = stats.total_applications || 0;
+            if (drawerSent) drawerSent.textContent = stats.sent_applications || 0;
+            if (drawerFailed) drawerFailed.textContent = stats.failed_applications || 0;
+        });
+        
+        // Fermer le drawer sur mobile après clic
+        if (window.innerWidth <= 768) {
+            document.querySelectorAll('.drawer-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    setTimeout(() => closeDrawer(), 300);
+                });
+            });
+        }
+        
+        // Gestion du menu FAB
+        function toggleFabMenu() {
+            const fabMenu = document.getElementById('fabMenu');
+            const fabMain = document.getElementById('fabMain');
+            const fabMainIcon = document.getElementById('fabMainIcon');
+            
+            if (fabMenu && fabMain) {
+                fabMenu.classList.toggle('open');
+                fabMain.classList.toggle('active');
+                if (fabMainIcon) {
+                    fabMainIcon.textContent = fabMenu.classList.contains('open') ? '✕' : '⚙️';
+                }
+            }
+        }
+        
+        function closeFabMenu() {
+            const fabMenu = document.getElementById('fabMenu');
+            const fabMain = document.getElementById('fabMain');
+            const fabMainIcon = document.getElementById('fabMainIcon');
+            
+            if (fabMenu && fabMain) {
+                fabMenu.classList.remove('open');
+                fabMain.classList.remove('active');
+                if (fabMainIcon) {
+                    fabMainIcon.textContent = '⚙️';
+                }
+            }
+        }
+        
+        // Fermer le menu FAB en cliquant en dehors
+        document.addEventListener('click', (e) => {
+            const fabContainer = document.getElementById('fabContainer');
+            const fabMenu = document.getElementById('fabMenu');
+            
+            if (fabContainer && fabMenu) {
+                if (!fabContainer.contains(e.target) && fabMenu.classList.contains('open')) {
+                    closeFabMenu();
+                }
+            }
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+

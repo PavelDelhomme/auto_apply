@@ -1,6 +1,6 @@
 from jinja2 import Template
 
-def generate_cover_letter(job, template_path="cover_letter_template.txt"):
+def generate_cover_letter(job, template_path="/app/templates/letters/cover_letter_template.txt"):
     """
     Génère une lettre de motivation personnalisée pour un job donné.
     :param job: Dictionnaire contenant les informations sur l'offre (title, company, location).

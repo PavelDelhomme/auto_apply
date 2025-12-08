@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Personas - Auto Apply{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="personas-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+        <h2 style="margin: 0;">👥 Gestion des Personas</h2>
+        <button class="btn btn-primary" onclick="showCreatePersonaModal()">➕ Créer un persona</button>
+    </div>
+    
+    <div class="personas-filter-buttons" style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 25px; padding: 20px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%); border-radius: 12px; border: 2px solid var(--border-color);">
+        <div style="flex: 1 1 100%; margin-bottom: 10px;">
+            <input type="text" id="personaSearchInput" placeholder="🔍 Rechercher un persona (nom, email)..." 
+                   oninput="filterPersonas()" 
+                   style="width: 100%; padding: 12px 16px; border: 2px solid var(--border-color); border-radius: 10px; background: var(--bg-card); color: var(--text-primary); font-size: 1em; transition: all 0.3s ease;"
+                   onfocus="this.style.borderColor='var(--text-title)'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'"
+                   onblur="this.style.borderColor='var(--border-color)'; this.style.boxShadow='none'">
+        </div>
+        <button class="btn" onclick="loadBasePersonas()" style="
+            background: linear-gradient(135deg, var(--text-title) 0%, #5b21b6 100%);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.95em;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+            border: none;
+        " onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'" 
+           onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)'">
+            📋 Personas de base
+        </button>
+        <button class="btn" onclick="loadAllPersonas()" style="
+            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.95em;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+            transition: all 0.3s ease;
+            border: none;
+        " onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.4)'" 
+           onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(16, 185, 129, 0.3)'">
+            👥 Tous les personas
+        </button>
+        <button class="btn" onclick="selectAllPersonas()" style="
+            background: linear-gradient(135deg, var(--info) 0%, #2563eb 100%);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.95em;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+            transition: all 0.3s ease;
+            border: none;
+        " onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.4)'" 
+           onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(59, 130, 246, 0.3)'">
+            ✅ Sélectionner tout
+        </button>
+        <button class="btn" onclick="deselectAllPersonas()" style="
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.95em;
+            box-shadow: 0 2px 8px rgba(107, 114, 128, 0.3);
+            transition: all 0.3s ease;
+            border: none;
+        " onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(107, 114, 128, 0.4)'" 
+           onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(107, 114, 128, 0.3)'">
+            ❌ Désélectionner tout
+        </button>
+        <span id="selectedCount" style="
+            color: var(--text-title);
+            font-weight: 700;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-radius: 10px;
+            border: 2px solid var(--text-title);
+            margin-left: auto;
+            font-size: 0.95em;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        ">
+            0 sélectionné(s)
+        </span>
+    </div>
+    
+    <div class="personas-list" id="personasList">
+        <p>Chargement des personas...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Modals seront ajoutés ici via JavaScript -->
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/personas.js"></script>
+{% endblock %}
+
