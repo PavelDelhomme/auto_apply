@@ -312,7 +312,8 @@ function renderSearchesList() {
                 <div class="pagination-wrapper">
                     <button class="pagination-btn pagination-btn-nav" 
                             onclick="changePage(${currentPage - 1})" 
-                            ${currentPage === 1 ? 'disabled' : ''}>
+                            ${currentPage === 1 ? 'disabled' : ''}
+                            ${currentPage === 1 ? '' : `onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'" onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)'"`}>
                         <span class="pagination-icon">←</span>
                         <span class="pagination-text">Précédent</span>
                     </button>
@@ -335,7 +336,8 @@ function renderSearchesList() {
                     
                     <button class="pagination-btn pagination-btn-nav" 
                             onclick="changePage(${currentPage + 1})" 
-                            ${currentPage === totalPages ? 'disabled' : ''}>
+                            ${currentPage === totalPages ? 'disabled' : ''}
+                            ${currentPage === totalPages ? '' : `onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'" onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)'"`}>
                         <span class="pagination-text">Suivant</span>
                         <span class="pagination-icon">→</span>
                     </button>
