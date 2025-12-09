@@ -364,7 +364,14 @@ function changePage(page) {
     if (page < 1 || page > totalPages) return;
     currentPage = page;
     renderSearchesList();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Scroll vers la liste des recherches au lieu du haut de la page
+    setTimeout(() => {
+        const searchesList = document.getElementById('searchesList');
+        if (searchesList) {
+            searchesList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, 100);
 }
 
 function toggleSearch(searchKey, wasSelected) {

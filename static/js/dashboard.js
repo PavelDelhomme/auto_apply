@@ -413,7 +413,14 @@ function changeActiveSearchesPage(page) {
     if (page < 1 || page > totalPages) return;
     activeSearchesPage = page;
     renderActiveSearches();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Scroll vers la section "Recherches Actives" au lieu du haut de la page
+    setTimeout(() => {
+        const activeSearchesSection = document.getElementById('activeSearchesContainer');
+        if (activeSearchesSection) {
+            activeSearchesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, 100);
 }
 
 // Variables pour la pagination des logs
@@ -540,10 +547,14 @@ function changeLogsPage(page) {
     if (page < 1 || page > totalPages) return;
     logsPage = page;
     renderLogs();
-    const logsContainer = document.getElementById('logsContainer');
-    if (logsContainer) {
-        logsContainer.scrollTop = 0;
-    }
+    
+    // Scroll vers la section "Logs" au lieu du haut de la page
+    setTimeout(() => {
+        const logsSection = document.getElementById('logsContainer');
+        if (logsSection) {
+            logsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, 100);
 }
 
 // Mettre à jour les statistiques
