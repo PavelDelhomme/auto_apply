@@ -96,30 +96,18 @@ function renderActiveSearches() {
         }
         
         html += `
-            <div style="padding: 20px; margin-bottom: 20px; background: var(--bg-card); border-radius: 12px; border-left: 4px solid var(--success); box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
-                    <div style="flex: 1;">
-                        <h3 style="margin: 0 0 8px 0; color: var(--text-title); font-size: 1.2em; font-weight: 700;">${search.name || 'Sans nom'}</h3>
-                        <p style="margin: 5px 0; color: var(--text-secondary); font-size: 0.9em;">
+            <div class="active-search-card">
+                <div class="active-search-header">
+                    <div class="active-search-info">
+                        <h3 class="active-search-title">${search.name || 'Sans nom'}</h3>
+                        <p class="active-search-meta">
                             🔍 <strong>${search.query || (search.name || 'Non spécifié')}</strong> | 📍 <strong>${search.location || 'Non spécifié'}</strong>
                         </p>
-                        <small style="color: var(--text-secondary); font-size: 0.75em;">ID: ${key}</small>
-                        ${search.description ? `<p style="margin: 8px 0 0 0; color: var(--text-secondary); font-size: 0.85em; font-style: italic;">${search.description}</p>` : ''}
+                        <small class="active-search-id">ID: ${key}</small>
+                        ${search.description ? `<p class="active-search-description">${search.description}</p>` : ''}
                     </div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <button onclick="toggleSearchActive('${key}')" style="
-                            background: ${search.is_active !== false ? 'linear-gradient(135deg, var(--success) 0%, #059669 100%)' : 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)'};
-                            color: white;
-                            padding: 6px 12px;
-                            border-radius: 12px;
-                            font-size: 0.8em;
-                            font-weight: 600;
-                            white-space: nowrap;
-                            border: none;
-                            cursor: pointer;
-                            transition: all 0.3s ease;
-                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                        " onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform='scale(1)'">
+                    <div class="active-search-toggle-container">
+                        <button onclick="toggleSearchActive('${key}')" class="toggle-search-btn ${search.is_active !== false ? 'active' : 'inactive'}">
                             ${search.is_active !== false ? '✅ Active' : '⏸️ Inactive'}
                         </button>
                     </div>
@@ -127,59 +115,59 @@ function renderActiveSearches() {
                 
                 <!-- Statistiques de la dernière exécution -->
                 ${lastRun ? `
-                    <div style="margin: 15px 0; padding: 15px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border-radius: 8px; border-left: 3px solid var(--text-title);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <strong style="color: var(--text-title); font-size: 0.9em;">📊 Dernière exécution</strong>
-                            <span style="color: var(--text-secondary); font-size: 0.8em;">${new Date(lastRun.timestamp).toLocaleString('fr-FR', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'})}</span>
+                    <div class="last-execution-stats">
+                        <div class="last-execution-header">
+                            <strong class="last-execution-title">📊 Dernière exécution</strong>
+                            <span class="last-execution-date">${new Date(lastRun.timestamp).toLocaleString('fr-FR', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'})}</span>
                         </div>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 10px;">
-                            <div style="text-align: center; padding: 10px; background: var(--bg-card); border-radius: 6px;">
-                                <div style="font-size: 1.5em; margin-bottom: 5px;">💼</div>
-                                <div style="color: var(--text-secondary); font-size: 0.75em; margin-bottom: 3px;">Offres</div>
-                                <div style="color: var(--text-primary); font-weight: 700; font-size: 1.1em;">${lastRunStats.jobs_found}</div>
+                        <div class="stats-grid">
+                            <div class="stat-box">
+                                <div class="stat-icon">💼</div>
+                                <div class="stat-label">Offres</div>
+                                <div class="stat-value">${lastRunStats.jobs_found}</div>
                             </div>
-                            <div style="text-align: center; padding: 10px; background: var(--bg-card); border-radius: 6px;">
-                                <div style="font-size: 1.5em; margin-bottom: 5px;">📤</div>
-                                <div style="color: var(--text-secondary); font-size: 0.75em; margin-bottom: 3px;">Candidatures</div>
-                                <div style="color: var(--text-primary); font-weight: 700; font-size: 1.1em;">${lastRunStats.applications_sent}</div>
+                            <div class="stat-box">
+                                <div class="stat-icon">📤</div>
+                                <div class="stat-label">Candidatures</div>
+                                <div class="stat-value">${lastRunStats.applications_sent}</div>
                             </div>
-                            <div style="text-align: center; padding: 10px; background: var(--bg-card); border-radius: 6px;">
-                                <div style="font-size: 1.5em; margin-bottom: 5px;">✅</div>
-                                <div style="color: var(--text-secondary); font-size: 0.75em; margin-bottom: 3px;">Réussies</div>
-                                <div style="color: var(--success); font-weight: 700; font-size: 1.1em;">${lastRunStats.successful}</div>
+                            <div class="stat-box">
+                                <div class="stat-icon">✅</div>
+                                <div class="stat-label">Réussies</div>
+                                <div class="stat-value success">${lastRunStats.successful}</div>
                             </div>
-                            <div style="text-align: center; padding: 10px; background: var(--bg-card); border-radius: 6px;">
-                                <div style="font-size: 1.5em; margin-bottom: 5px;">❌</div>
-                                <div style="color: var(--text-secondary); font-size: 0.75em; margin-bottom: 3px;">Échouées</div>
-                                <div style="color: var(--error); font-weight: 700; font-size: 1.1em;">${lastRunStats.applications_failed}</div>
+                            <div class="stat-box">
+                                <div class="stat-icon">❌</div>
+                                <div class="stat-label">Échouées</div>
+                                <div class="stat-value error">${lastRunStats.applications_failed}</div>
                             </div>
                         </div>
                     </div>
                 ` : `
-                    <div style="margin: 15px 0; padding: 15px; background: var(--border-color); border-radius: 8px; text-align: center;">
-                        <p style="color: var(--text-secondary); margin: 0; font-size: 0.9em;">⏳ Aucune exécution enregistrée</p>
+                    <div class="no-execution-message">
+                        <p>⏳ Aucune exécution enregistrée</p>
                     </div>
                 `}
                 
                 <!-- Informations générales -->
-                <div style="margin: 15px 0; padding: 12px; background: var(--border-color); border-radius: 8px;">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; font-size: 0.85em;">
-                        <div>
-                            <span style="color: var(--text-secondary);">🔄 Exécutions:</span>
-                            <strong style="color: var(--text-primary); margin-left: 5px;">${runCount}</strong>
+                <div class="search-general-info">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">🔄 Exécutions:</span>
+                            <strong class="info-value">${runCount}</strong>
                         </div>
-                        <div>
-                            <span style="color: var(--text-secondary);">💼 Type:</span>
-                            <strong style="color: var(--text-primary); margin-left: 5px;">${search.job_type || 'Tous'}</strong>
+                        <div class="info-item">
+                            <span class="info-label">💼 Type:</span>
+                            <strong class="info-value">${search.job_type || 'Tous'}</strong>
                         </div>
-                        <div>
-                            <span style="color: var(--text-secondary);">📊 Max résultats:</span>
-                            <strong style="color: var(--text-primary); margin-left: 5px;">${search.max_results || 50}</strong>
+                        <div class="info-item">
+                            <span class="info-label">📊 Max résultats:</span>
+                            <strong class="info-value">${search.max_results || 50}</strong>
                         </div>
                         ${search.standalone ? `
-                            <div>
-                                <span style="color: var(--text-secondary);">🔍 Mode:</span>
-                                <strong style="color: var(--info); margin-left: 5px;">Standalone</strong>
+                            <div class="info-item">
+                                <span class="info-label">🔍 Mode:</span>
+                                <strong class="info-value info">Standalone</strong>
                             </div>
                         ` : ''}
                     </div>
@@ -187,30 +175,30 @@ function renderActiveSearches() {
                 
                 <!-- Personas -->
                 ${personasAssigned.length > 0 || personasExcluded.length > 0 ? `
-                    <div style="margin: 15px 0; padding: 12px; background: var(--border-color); border-radius: 8px;">
+                    <div class="personas-section">
                         ${personasAssigned.length > 0 ? `
-                            <div style="margin-bottom: 10px;">
-                                <strong style="color: var(--success); font-size: 0.85em;">✓ Personas assignés (${personasAssigned.length}):</strong>
-                                <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px;">
+                            <div class="personas-group">
+                                <strong class="personas-group-title assigned">✓ Personas assignés (${personasAssigned.length}):</strong>
+                                <div class="personas-tags">
                                     ${personasAssigned.slice(0, 5).map(email => {
                                         const persona = allPersonas[Object.keys(allPersonas).find(k => allPersonas[k].email === email)];
                                         const name = persona ? persona.name : email;
-                                        return `<span style="background: var(--success); color: white; padding: 4px 8px; border-radius: 10px; font-size: 0.75em;">${name}</span>`;
+                                        return `<span class="persona-tag assigned">${name}</span>`;
                                     }).join('')}
-                                    ${personasAssigned.length > 5 ? `<span style="color: var(--text-secondary); font-size: 0.75em; padding: 4px 8px;">+${personasAssigned.length - 5}</span>` : ''}
+                                    ${personasAssigned.length > 5 ? `<span class="personas-more">+${personasAssigned.length - 5}</span>` : ''}
                                 </div>
                             </div>
                         ` : ''}
                         ${personasExcluded.length > 0 ? `
-                            <div>
-                                <strong style="color: var(--error); font-size: 0.85em;">✗ Personas exclus (${personasExcluded.length}):</strong>
-                                <div style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px;">
+                            <div class="personas-group">
+                                <strong class="personas-group-title excluded">✗ Personas exclus (${personasExcluded.length}):</strong>
+                                <div class="personas-tags">
                                     ${personasExcluded.slice(0, 5).map(email => {
                                         const persona = allPersonas[Object.keys(allPersonas).find(k => allPersonas[k].email === email)];
                                         const name = persona ? persona.name : email;
-                                        return `<span style="background: var(--error); color: white; padding: 4px 8px; border-radius: 10px; font-size: 0.75em;">${name}</span>`;
+                                        return `<span class="persona-tag excluded">${name}</span>`;
                                     }).join('')}
-                                    ${personasExcluded.length > 5 ? `<span style="color: var(--text-secondary); font-size: 0.75em; padding: 4px 8px;">+${personasExcluded.length - 5}</span>` : ''}
+                                    ${personasExcluded.length > 5 ? `<span class="personas-more">+${personasExcluded.length - 5}</span>` : ''}
                                 </div>
                             </div>
                         ` : ''}
@@ -218,8 +206,8 @@ function renderActiveSearches() {
                 ` : ''}
                 
                 <!-- Bouton pour voir les détails complets -->
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--border-color);">
-                    <button onclick="showSearchDetailsFromDashboard('${key}')" class="btn" style="width: 100%; background: linear-gradient(135deg, var(--text-title) 0%, #5b21b6 100%); color: white; padding: 10px; border-radius: 8px; font-weight: 600;">
+                <div class="view-details-section">
+                    <button onclick="showSearchDetailsFromDashboard('${key}')" class="view-details-btn">
                         📊 Voir les détails complets
                     </button>
                 </div>
@@ -230,52 +218,15 @@ function renderActiveSearches() {
     // Ajouter la pagination avec le même style que les boutons de filtrage
     if (totalPages > 1) {
         html += `
-            <div style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 20px; padding: 20px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%); border-radius: 12px; border: 2px solid var(--border-color); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);">
-                <button class="btn" onclick="changeActiveSearchesPage(${activeSearchesPage - 1})" ${activeSearchesPage === 1 ? 'disabled' : ''} style="
-                    background: linear-gradient(135deg, var(--text-title) 0%, #5b21b6 100%);
-                    color: white;
-                    padding: 12px 20px;
-                    border-radius: 10px;
-                    font-weight: 600;
-                    font-size: 0.95em;
-                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-                    transition: all 0.3s ease;
-                    border: none;
-                    cursor: pointer;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 8px;
-                " ${activeSearchesPage === 1 ? '' : `onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'" onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)'"`}>
+            <div class="pagination-container">
+                <button class="pagination-btn" onclick="changeActiveSearchesPage(${activeSearchesPage - 1})" ${activeSearchesPage === 1 ? 'disabled' : ''}>
                     <span>←</span>
                     <span>Précédent</span>
                 </button>
-                <span style="
-                    color: var(--text-title);
-                    font-weight: 700;
-                    padding: 12px 20px;
-                    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-                    border-radius: 10px;
-                    border: 2px solid var(--text-title);
-                    font-size: 0.95em;
-                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
-                ">
+                <span class="pagination-info">
                     Page <strong>${activeSearchesPage}</strong> sur <strong>${totalPages}</strong> (${totalItems} recherche${totalItems > 1 ? 's' : ''})
                 </span>
-                <button class="btn" onclick="changeActiveSearchesPage(${activeSearchesPage + 1})" ${activeSearchesPage === totalPages ? 'disabled' : ''} style="
-                    background: linear-gradient(135deg, var(--text-title) 0%, #5b21b6 100%);
-                    color: white;
-                    padding: 12px 20px;
-                    border-radius: 10px;
-                    font-weight: 600;
-                    font-size: 0.95em;
-                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-                    transition: all 0.3s ease;
-                    border: none;
-                    cursor: pointer;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 8px;
-                " ${activeSearchesPage === totalPages ? '' : `onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'" onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)'"`}>
+                <button class="pagination-btn" onclick="changeActiveSearchesPage(${activeSearchesPage + 1})" ${activeSearchesPage === totalPages ? 'disabled' : ''}>
                     <span>Suivant</span>
                     <span>→</span>
                 </button>
