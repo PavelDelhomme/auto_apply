@@ -387,9 +387,10 @@ def api_generate_persona_cv(persona_email):
         cv_path = generate_cv_for_persona(
             persona_email=persona_email,
             persona_name=persona.get('name'),
-            cv_data=cv_data,
+            cv_data=cv_data if cv_data else None,
             search_key=search_key,
-            cv_id=cv_id
+            cv_id=cv_id,
+            persona_data=persona
         )
         
         if cv_path:
