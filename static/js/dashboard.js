@@ -25,7 +25,7 @@ let activeSearchesPage = 1;
 let activeSearchesPerPage = 5;
 let allActiveSearches = {};
 
-// Charger les recherches actives
+// Charger les recherches actives avec cache
 async function loadActiveSearches() {
     const container = document.getElementById('activeSearchesContainer');
     if (!container) return;
@@ -33,11 +33,19 @@ async function loadActiveSearches() {
     try {
         container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">⏳ Chargement...</p>';
         
-        const response = await fetch('/api/searches/enabled');
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+        // Utiliser le cache si disponible
+        allActiveSearches = await CacheManager.cachedApiCall('/api/searches/enabled', {}, 'searches_enabled', 2 * 60 * 1000);
+        
+        // Filtrer les recherches invalides (sans query ou location)
+        const validSearches = {};
+        for (const [key, search] of Object.entries(allActiveSearches)) {
+            // Garder seulement les recherches valides (avec au moins un nom ou une query)
+            if (search && (search.query || search.name || search.location)) {
+                validSearches[key] = search;
+            }
         }
-        allActiveSearches = await response.json();
+        allActiveSearches = validSearches;
+        
         activeSearchesPage = 1;
         renderActiveSearches();
     } catch (error) {
@@ -93,12 +101,28 @@ function renderActiveSearches() {
                     <div style="flex: 1;">
                         <h3 style="margin: 0 0 8px 0; color: var(--text-title); font-size: 1.2em; font-weight: 700;">${search.name || 'Sans nom'}</h3>
                         <p style="margin: 5px 0; color: var(--text-secondary); font-size: 0.9em;">
-                            🔍 <strong>${search.query || 'N/A'}</strong> | 📍 <strong>${search.location || 'N/A'}</strong>
+                            🔍 <strong>${search.query || (search.name || 'Non spécifié')}</strong> | 📍 <strong>${search.location || 'Non spécifié'}</strong>
                         </p>
                         <small style="color: var(--text-secondary); font-size: 0.75em;">ID: ${key}</small>
                         ${search.description ? `<p style="margin: 8px 0 0 0; color: var(--text-secondary); font-size: 0.85em; font-style: italic;">${search.description}</p>` : ''}
                     </div>
-                    <span style="background: var(--success); color: white; padding: 6px 12px; border-radius: 12px; font-size: 0.8em; font-weight: 600; white-space: nowrap;">✅ Active</span>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button onclick="toggleSearchActive('${key}')" style="
+                            background: ${search.is_active !== false ? 'linear-gradient(135deg, var(--success) 0%, #059669 100%)' : 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)'};
+                            color: white;
+                            padding: 6px 12px;
+                            border-radius: 12px;
+                            font-size: 0.8em;
+                            font-weight: 600;
+                            white-space: nowrap;
+                            border: none;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        " onmouseenter="this.style.transform='scale(1.05)'" onmouseleave="this.style.transform='scale(1)'">
+                            ${search.is_active !== false ? '✅ Active' : '⏸️ Inactive'}
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Statistiques de la dernière exécution -->

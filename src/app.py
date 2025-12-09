@@ -1874,6 +1874,53 @@ def api_delete_test_data():
         logger.error(f"Erreur lors de la suppression des données de test: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/test-data/clean-searches', methods=['POST'])
+def api_clean_test_searches():
+    """Nettoie les recherches de test et invalides."""
+    try:
+        all_searches = search_manager.get_all_searches()
+        cleaned = 0
+        invalid = []
+        
+        for key, search in list(all_searches.items()):
+            # Supprimer les recherches invalides (sans query, name, location)
+            if not search.get('query') and not search.get('name') and not search.get('location'):
+                search_manager.delete_search(key)
+                invalid.append(key)
+                cleaned += 1
+            # Supprimer les recherches de test (nom contient "test")
+            elif 'test' in key.lower() or 'test' in (search.get('name', '') or '').lower():
+                search_manager.delete_search(key)
+                invalid.append(key)
+                cleaned += 1
+        
+        log_message(f"{cleaned} recherche(s) de test/invalide(s) supprimée(s)", "info")
+        return jsonify({'success': True, 'cleaned': cleaned, 'deleted': invalid})
+    except Exception as e:
+        logger.error(f"Erreur lors du nettoyage des recherches: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/test-data/clean-personas', methods=['POST'])
+def api_clean_test_personas():
+    """Nettoie les personas de test."""
+    try:
+        all_personas = persona_manager.get_all_personas()
+        cleaned = 0
+        invalid = []
+        
+        for key, persona in list(all_personas.items()):
+            # Supprimer les personas de test (nom ou clé contient "test")
+            if 'test' in key.lower() or 'test' in (persona.get('name', '') or '').lower():
+                persona_manager.delete_persona(key)
+                invalid.append(key)
+                cleaned += 1
+        
+        log_message(f"{cleaned} persona(s) de test supprimé(s)", "info")
+        return jsonify({'success': True, 'cleaned': cleaned, 'deleted': invalid})
+    except Exception as e:
+        logger.error(f"Erreur lors du nettoyage des personas: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/test-data/mark', methods=['POST'])
 def api_mark_test_data():
     """Marque des données comme test ou non."""

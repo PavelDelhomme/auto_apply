@@ -138,3 +138,74 @@ async function apiCall(url, options = {}) {
     }
 }
 
+// Système de cache avec localStorage
+const CacheManager = {
+    // Durée de vie du cache en millisecondes (5 minutes par défaut)
+    defaultTTL: 5 * 60 * 1000,
+    
+    // Obtenir une valeur du cache
+    get(key) {
+        try {
+            const item = localStorage.getItem(`cache_${key}`);
+            if (!item) return null;
+            
+            const { value, expiry } = JSON.parse(item);
+            
+            // Vérifier si le cache a expiré
+            if (Date.now() > expiry) {
+                localStorage.removeItem(`cache_${key}`);
+                return null;
+            }
+            
+            return value;
+        } catch (e) {
+            console.error('Erreur lecture cache:', e);
+            return null;
+        }
+    },
+    
+    // Mettre une valeur en cache
+    set(key, value, ttl = null) {
+        try {
+            const expiry = Date.now() + (ttl || this.defaultTTL);
+            localStorage.setItem(`cache_${key}`, JSON.stringify({ value, expiry }));
+        } catch (e) {
+            console.error('Erreur écriture cache:', e);
+        }
+    },
+    
+    // Supprimer une clé du cache
+    remove(key) {
+        localStorage.removeItem(`cache_${key}`);
+    },
+    
+    // Vider tout le cache
+    clear() {
+        const keys = Object.keys(localStorage);
+        keys.forEach(key => {
+            if (key.startsWith('cache_')) {
+                localStorage.removeItem(key);
+            }
+        });
+    },
+    
+    // API call avec cache
+    async cachedApiCall(url, options = {}, cacheKey = null, ttl = null) {
+        const key = cacheKey || url;
+        
+        // Vérifier le cache d'abord
+        const cached = this.get(key);
+        if (cached !== null) {
+            return cached;
+        }
+        
+        // Faire l'appel API
+        const data = await apiCall(url, options);
+        
+        // Mettre en cache
+        this.set(key, data, ttl);
+        
+        return data;
+    }
+};
+
