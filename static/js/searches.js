@@ -274,17 +274,81 @@ function renderSearchesList() {
     
     // Ajouter la pagination
     if (totalPages > 1) {
+        // Générer les numéros de page à afficher
+        let pageNumbers = [];
+        const maxVisiblePages = 5;
+        
+        if (totalPages <= maxVisiblePages) {
+            // Afficher toutes les pages si moins de maxVisiblePages
+            for (let i = 1; i <= totalPages; i++) {
+                pageNumbers.push(i);
+            }
+        } else {
+            // Afficher les pages autour de la page actuelle
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+            
+            if (endPage - startPage < maxVisiblePages - 1) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+            
+            if (startPage > 1) {
+                pageNumbers.push(1);
+                if (startPage > 2) pageNumbers.push('...');
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                pageNumbers.push(i);
+            }
+            
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) pageNumbers.push('...');
+                pageNumbers.push(totalPages);
+            }
+        }
+        
         html += `
-            <div style="grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; padding: 20px; background: var(--bg-card); border-radius: 10px;">
-                <button class="btn" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} style="padding: 10px 20px;">
-                    ← Précédent
-                </button>
-                <span style="color: var(--text-primary); font-weight: 600;">
-                    Page ${currentPage} sur ${totalPages} (${totalItems} recherche${totalItems > 1 ? 's' : ''})
-                </span>
-                <button class="btn" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} style="padding: 10px 20px;">
-                    Suivant →
-                </button>
+            <div class="pagination-container" style="grid-column: 1 / -1; margin-top: 30px;">
+                <div class="pagination-wrapper">
+                    <button class="pagination-btn pagination-btn-nav" 
+                            onclick="changePage(${currentPage - 1})" 
+                            ${currentPage === 1 ? 'disabled' : ''}>
+                        <span class="pagination-icon">←</span>
+                        <span class="pagination-text">Précédent</span>
+                    </button>
+                    
+                    <div class="pagination-numbers">
+                        ${pageNumbers.map(page => {
+                            if (page === '...') {
+                                return '<span class="pagination-ellipsis">...</span>';
+                            }
+                            const isActive = page === currentPage;
+                            return `
+                                <button class="pagination-btn pagination-btn-number ${isActive ? 'active' : ''}" 
+                                        onclick="changePage(${page})"
+                                        ${isActive ? 'aria-current="page"' : ''}>
+                                    ${page}
+                                </button>
+                            `;
+                        }).join('')}
+                    </div>
+                    
+                    <button class="pagination-btn pagination-btn-nav" 
+                            onclick="changePage(${currentPage + 1})" 
+                            ${currentPage === totalPages ? 'disabled' : ''}>
+                        <span class="pagination-text">Suivant</span>
+                        <span class="pagination-icon">→</span>
+                    </button>
+                </div>
+                
+                <div class="pagination-info">
+                    <span class="pagination-info-text">
+                        Page <strong>${currentPage}</strong> sur <strong>${totalPages}</strong>
+                    </span>
+                    <span class="pagination-info-count">
+                        (${totalItems} recherche${totalItems > 1 ? 's' : ''})
+                    </span>
+                </div>
             </div>
         `;
     }
