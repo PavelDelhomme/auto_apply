@@ -228,13 +228,14 @@ async function renderPersonasList() {
                     </div>
                 </div>
                 
-                <div class="persona-badges">
-                    ${persona.alias ? '<span class="persona-badge" style="background: var(--info);">Alias</span>' : '<span class="persona-badge" style="background: var(--success);">Base</span>'}
-                    ${!persona.alias && variantCount > 0 ? `<span class="persona-badge" style="background: var(--warning);">${variantCount} variante(s)</span>` : ''}
-                </div>
-                
                 <div class="persona-section">
-                    <div class="persona-section-title">📄 CV</div>
+                    <div class="persona-section-title">
+                        📄 CV
+                        <div class="persona-badges-inline">
+                            ${persona.alias ? '<span class="persona-badge" style="background: var(--info);">Alias</span>' : '<span class="persona-badge" style="background: var(--success);">Base</span>'}
+                            ${!persona.alias && variantCount > 0 ? `<span class="persona-badge" style="background: var(--warning);">${variantCount} variante(s)</span>` : ''}
+                        </div>
+                    </div>
                     ${cv ? `
                         <div class="cv-info">
                             <span class="cv-status exists">✓ Disponible</span>
@@ -493,28 +494,54 @@ function downloadCV(personaEmail) {
 }
 
 async function viewEmails(personaEmail, personaName) {
+    if (!personaEmail) {
+        console.error('viewEmails: personaEmail is required');
+        alert('Erreur: Email du persona manquant');
+        return;
+    }
+    
+    // Supprimer le modal existant s'il y en a un
+    const existingModal = document.getElementById('emailsModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
     const modal = document.createElement('div');
     modal.className = 'modal active';
     modal.id = 'emailsModal';
     modal.innerHTML = `
-        <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
             <div class="modal-header">
-                <h2>📧 Emails de ${personaName}</h2>
-                <button class="modal-close" onclick="closeEmailsModal()">✕</button>
+                <h2 style="color: var(--text-title); margin: 0;">📧 Emails de ${personaName || personaEmail}</h2>
+                <button class="modal-close" onclick="closeEmailsModal()" style="background: transparent; border: none; font-size: 1.5em; cursor: pointer; color: var(--text-primary);">✕</button>
             </div>
-            <div id="emailsList" style="padding: 20px;">
-                <p>Chargement des emails...</p>
+            <div style="padding: 20px;">
+                <div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <button class="btn" onclick="fetchEmailsForPersona('${personaEmail}')" style="background: var(--info); color: white;">🔄 Actualiser</button>
+                    <button class="btn" onclick="testEmailConnection('${personaEmail}')" style="background: var(--warning); color: white;">🧪 Tester connexion</button>
+                </div>
+                <div id="emailsList" style="padding: 20px;">
+                    <p style="text-align: center; color: var(--text-secondary);">Chargement des emails...</p>
+                </div>
             </div>
         </div>
     `;
     document.body.appendChild(modal);
+    
+    // Charger les emails
+    await loadEmailsForPersona(personaEmail);
+}
+
+async function loadEmailsForPersona(personaEmail) {
+    const emailsList = document.getElementById('emailsList');
+    if (!emailsList) return;
     
     try {
         const response = await fetch(`/api/personas/${encodeURIComponent(personaEmail)}/emails`);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
-        const emails = await response.json();
+        let emails = await response.json();
         if (!Array.isArray(emails)) {
             emails = [];
         }
