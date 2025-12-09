@@ -132,6 +132,10 @@ clean-images: ## Supprime les images Docker
 	docker-compose -f $(COMPOSE_FILE) down --rmi all
 	@printf "$(GREEN)✅ Images supprimées$(NC)\n"
 
+clean-test-personas: ## Nettoie les personas de test (testextended@example.com, testapi@example.com, etc.)
+	@printf "$(GREEN)🧹 Nettoyage des personas de test...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec -T $(SERVICE_NAME) python /app/scripts/clean_test_personas.py || printf "$(YELLOW)⚠️  Le conteneur n'est pas en cours d'exécution. Démarrez-le avec 'make start'$(NC)\n"
+
 pull: ## Met à jour les images de base
 	@printf "$(GREEN)⬇️  Mise à jour des images de base...$(NC)\n"
 	docker-compose -f $(COMPOSE_FILE) pull
