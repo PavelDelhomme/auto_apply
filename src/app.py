@@ -1133,16 +1133,13 @@ def api_test_application():
         cv_path = os.path.join(cv_dir, f"{safe_email}_cv.pdf")
         
         if not os.path.exists(cv_path):
-            # Générer le CV
-            cvs_data = load_cvs()
-            if cvs_data:
-                cv_key = list(cvs_data.keys())[0]
-                cv_data = cvs_data[cv_key]
-                cv_path = generate_cv_for_persona(
-                    persona_email=persona_email,
-                    persona_name=persona.get('name'),
-                    cv_data=cv_data
-                )
+            # Générer le CV avec des données réalistes
+            cv_path = generate_cv_for_persona(
+                persona_email=persona_email,
+                persona_name=persona.get('name'),
+                cv_data=None,  # Génération automatique de données réalistes
+                persona_data=persona
+            )
         
         if not cv_path or not os.path.exists(cv_path):
             return jsonify({'success': False, 'error': 'CV non disponible'}), 400

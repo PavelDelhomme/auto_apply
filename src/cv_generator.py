@@ -4,6 +4,7 @@ import hashlib
 import requests
 from jinja2 import Template
 import pdfkit
+from .cv_data_generator import generate_realistic_cv_data
 
 def get_persona_photo(persona_email, photos_dir="/app/photos"):
     """
@@ -88,26 +89,32 @@ def get_persona_photo(persona_email, photos_dir="/app/photos"):
         print(f"⚠️  Erreur lors du téléchargement de la photo: {e}")
         return None
 
-def generate_cv_for_persona(persona_email, persona_name, cv_data, template_file="/app/templates/cv/cv_template.html", 
-                            output_dir="/app/cvs", search_key=None, cv_id=None):
+def generate_cv_for_persona(persona_email, persona_name, cv_data=None, template_file="/app/templates/cv/cv_template.html", 
+                            output_dir="/app/cvs", search_key=None, cv_id=None, persona_data=None):
     """
     Génère un CV au format PDF pour un persona spécifique.
     :param persona_email: Email du persona.
     :param persona_name: Nom du persona.
-    :param cv_data: Dictionnaire contenant les données du CV.
+    :param cv_data: Dictionnaire contenant les données du CV (optionnel, sera généré si non fourni).
     :param template_file: Chemin du fichier HTML servant de modèle.
     :param output_dir: Dossier de sortie pour les CVs.
     :param search_key: Clé de la recherche (optionnel, pour CV spécifique à une recherche).
     :param cv_id: ID du CV (optionnel, pour identifier le CV).
+    :param persona_data: Données complètes du persona (optionnel, pour générer un CV réaliste).
     :return: Chemin du fichier PDF généré.
     """
     # Créer le dossier de sortie s'il n'existe pas
     os.makedirs(output_dir, exist_ok=True)
     
+    # Si cv_data n'est pas fourni, générer des données réalistes
+    if not cv_data:
+        cv_data = generate_realistic_cv_data(persona_name, persona_email, persona_data)
+    
     # Récupérer ou générer la photo du persona
     photo_path = get_persona_photo(persona_email)
     if photo_path:
         # Convertir le chemin absolu en chemin relatif pour le template
+        # Pour PDF, on doit utiliser le chemin absolu avec file://
         cv_data['photo_path'] = photo_path
     
     # Charger le modèle HTML
