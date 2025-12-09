@@ -54,6 +54,12 @@
     border-bottom: 2px solid var(--border-color);
 }
 
+.persona-info {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
 .persona-name {
     font-weight: 700;
     font-size: 1.2em;
