@@ -7,6 +7,8 @@ let selectedPersonas = new Set();
 let currentPersonaKey = null;
 let showingBaseOnly = false;
 let personaSearchFilter = '';
+let currentPersonasPage = 1;
+let personasPerPage = 12;
 
 // Cache pour les CVs et emails
 let personasCVs = {};
@@ -136,6 +138,7 @@ function filterPersonas() {
     const searchInput = document.getElementById('personaSearchInput');
     if (searchInput) {
         personaSearchFilter = searchInput.value.toLowerCase().trim();
+        currentPersonasPage = 1; // Réinitialiser à la page 1 lors d'une recherche
         renderPersonasList();
     }
 }
@@ -144,7 +147,6 @@ async function renderPersonasList() {
     const container = document.getElementById('personasList');
     if (!container) return;
     
-    let html = '';
     let personasToShow = showingBaseOnly 
         ? Object.entries(allPersonas).filter(([k, p]) => !p.alias)
         : Object.entries(allPersonas);
@@ -158,34 +160,49 @@ async function renderPersonasList() {
     }
     
     const totalPersonas = personasToShow.length;
-    showPersonasLoader('Chargement des personas...', 0, 0, totalPersonas);
     
-    // Charger les CVs et emails pour tous les personas avec progression
+    if (totalPersonas === 0) {
+        container.innerHTML = '<p style="text-align: center; padding: 40px; color: var(--text-secondary);">Aucun persona trouvé</p>';
+        return;
+    }
+    
+    // Calcul de la pagination
+    const totalPages = Math.ceil(totalPersonas / personasPerPage);
+    const startIndex = (currentPersonasPage - 1) * personasPerPage;
+    const endIndex = startIndex + personasPerPage;
+    const paginatedPersonas = personasToShow.slice(startIndex, endIndex);
+    
+    // Ajuster la page courante si elle dépasse le nombre total de pages
+    if (currentPersonasPage > totalPages && totalPages > 0) {
+        currentPersonasPage = totalPages;
+        return renderPersonasList(); // Re-rendre avec la page corrigée
+    }
+    
+    showPersonasLoader('Chargement des personas...', 0, 0, paginatedPersonas.length);
+    
+    // Charger les CVs et emails uniquement pour les personas de la page courante
     let loadedCount = 0;
-    const loadPromises = personasToShow.map(async ([key, persona], index) => {
+    const loadPromises = paginatedPersonas.map(async ([key, persona], index) => {
         await Promise.all([
             loadPersonaCV(persona.email),
             loadPersonaEmails(persona.email)
         ]);
         
         loadedCount++;
-        const progress = (loadedCount / totalPersonas) * 100;
+        const progress = (loadedCount / paginatedPersonas.length) * 100;
         showPersonasLoader(
-            `Chargement des personas... (${loadedCount}/${totalPersonas})`,
+            `Chargement des personas... (${loadedCount}/${paginatedPersonas.length})`,
             progress,
             loadedCount,
-            totalPersonas
+            paginatedPersonas.length
         );
     });
     
     await Promise.all(loadPromises);
     
-    if (personasToShow.length === 0) {
-        container.innerHTML = '<p style="text-align: center; padding: 40px; color: var(--text-secondary);">Aucun persona trouvé</p>';
-        return;
-    }
+    let html = '';
     
-    for (const [key, persona] of personasToShow) {
+    for (const [key, persona] of paginatedPersonas) {
         const isSelected = selectedPersonas.has(persona.email);
         const variantCount = Object.values(allPersonas).filter(p => p.parent === persona.email).length;
         
@@ -246,19 +263,135 @@ async function renderPersonasList() {
         `;
     }
     
+    // Ajouter la pagination
+    if (totalPages > 1) {
+        // Générer les numéros de page à afficher
+        let pageNumbers = [];
+        const maxVisiblePages = 5;
+        
+        if (totalPages <= maxVisiblePages) {
+            // Afficher toutes les pages si moins de maxVisiblePages
+            for (let i = 1; i <= totalPages; i++) {
+                pageNumbers.push(i);
+            }
+        } else {
+            // Afficher les pages autour de la page actuelle
+            let startPage = Math.max(1, currentPersonasPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+            
+            if (endPage - startPage < maxVisiblePages - 1) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+            
+            if (startPage > 1) {
+                pageNumbers.push(1);
+                if (startPage > 2) pageNumbers.push('...');
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                pageNumbers.push(i);
+            }
+            
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) pageNumbers.push('...');
+                pageNumbers.push(totalPages);
+            }
+        }
+        
+        html += `
+            <div class="pagination-container" style="grid-column: 1 / -1; margin-top: 30px;">
+                <div class="pagination-wrapper">
+                    <button class="pagination-btn" 
+                            onclick="changePersonasPage(${currentPersonasPage - 1})" 
+                            ${currentPersonasPage === 1 ? 'disabled' : ''}>
+                        <span>←</span>
+                        <span>Précédent</span>
+                    </button>
+                    
+                    <div class="pagination-numbers">
+                        ${pageNumbers.map(page => {
+                            if (page === '...') {
+                                return '<span class="pagination-ellipsis">...</span>';
+                            }
+                            const isActive = page === currentPersonasPage;
+                            return `
+                                <button class="pagination-btn-number ${isActive ? 'active' : ''}" 
+                                        onclick="changePersonasPage(${page})"
+                                        ${isActive ? 'aria-current="page"' : ''}>
+                                    ${page}
+                                </button>
+                            `;
+                        }).join('')}
+                    </div>
+                    
+                    <button class="pagination-btn" 
+                            onclick="changePersonasPage(${currentPersonasPage + 1})" 
+                            ${currentPersonasPage === totalPages ? 'disabled' : ''}>
+                        <span>Suivant</span>
+                        <span>→</span>
+                    </button>
+                </div>
+                
+                <div class="pagination-info">
+                    <span class="pagination-info-text">
+                        Page <strong>${currentPersonasPage}</strong> sur <strong>${totalPages}</strong>
+                    </span>
+                    <span class="pagination-info-count">
+                        (${totalPersonas} persona${totalPersonas > 1 ? 's' : ''})
+                    </span>
+                </div>
+            </div>
+        `;
+    }
+    
     container.innerHTML = html || '<p style="text-align: center; padding: 20px; color: var(--text-secondary);">Aucun persona trouvé</p>';
     updateSelectedCount();
+}
+
+function changePersonasPage(page) {
+    const totalPersonas = showingBaseOnly 
+        ? Object.entries(allPersonas).filter(([k, p]) => !p.alias).length
+        : Object.entries(allPersonas).length;
+    
+    let filteredPersonas = showingBaseOnly 
+        ? Object.entries(allPersonas).filter(([k, p]) => !p.alias)
+        : Object.entries(allPersonas);
+    
+    if (personaSearchFilter) {
+        filteredPersonas = filteredPersonas.filter(([k, p]) => 
+            p.name.toLowerCase().includes(personaSearchFilter) ||
+            p.email.toLowerCase().includes(personaSearchFilter)
+        );
+    }
+    
+    const totalPages = Math.ceil(filteredPersonas.length / personasPerPage);
+    if (page < 1 || page > totalPages) return;
+    
+    currentPersonasPage = page;
+    renderPersonasList();
+    
+    // Scroll vers la liste des personas en gardant la position relative
+    const container = document.getElementById('personasList');
+    if (container) {
+        const card = container.closest('.card');
+        if (card) {
+            const offset = card.getBoundingClientRect().top + window.pageYOffset - 20;
+            window.scrollTo({ top: offset, behavior: 'smooth' });
+        }
+    }
 }
 
 async function loadBasePersonas() {
     try {
         showPersonasLoader('Chargement des personas de base...', 0, 0, 0);
+        currentPersonasPage = 1; // Réinitialiser à la page 1
         const response = await fetch('/api/personas/base');
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
         allPersonas = await response.json();
-        const totalCount = Object.keys(allPersonas).length;
+        showingBaseOnly = true;
+        const totalCount = Object.keys(allPersonas).filter(([k, p]) => !p.alias).length;
         showPersonasLoader('Chargement des personas de base...', 50, totalCount, totalCount * 2);
         showingBaseOnly = true;
         await renderPersonasList();
@@ -281,11 +414,13 @@ async function loadBasePersonas() {
 async function loadAllPersonas() {
     try {
         showPersonasLoader('Chargement de tous les personas...', 0, 0, 0);
+        currentPersonasPage = 1; // Réinitialiser à la page 1
         const response = await fetch('/api/personas');
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
         allPersonas = await response.json();
+        showingBaseOnly = false;
         const totalCount = Object.keys(allPersonas).length;
         showPersonasLoader('Chargement de tous les personas...', 50, totalCount, totalCount * 2);
         showingBaseOnly = false;
