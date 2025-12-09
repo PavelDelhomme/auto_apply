@@ -61,6 +61,11 @@
     margin-bottom: 6px;
     word-wrap: break-word;
     letter-spacing: -0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    cursor: help;
 }
 
 .persona-email {
@@ -72,6 +77,11 @@
     padding: 4px 8px;
     border-radius: 4px;
     display: inline-block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    cursor: help;
 }
 
 [data-theme="dark"] .persona-email {

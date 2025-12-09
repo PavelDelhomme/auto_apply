@@ -198,8 +198,8 @@ async function renderPersonasList() {
                     <input type="checkbox" id="persona-${key}" ${isSelected ? 'checked' : ''} 
                            onchange="togglePersona('${persona.email}', ${isSelected})">
                     <div class="persona-info">
-                        <div class="persona-name">${persona.name}</div>
-                        <div class="persona-email">${persona.email}</div>
+                        <div class="persona-name" title="${persona.name}">${persona.name}</div>
+                        <div class="persona-email" title="${persona.email}">${persona.email}</div>
                         ${persona.parent ? `<small style="color: var(--text-secondary); display: block; margin-top: 5px;">Parent: ${persona.parent}</small>` : ''}
                     </div>
                 </div>
