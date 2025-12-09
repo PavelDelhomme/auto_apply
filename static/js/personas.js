@@ -548,34 +548,102 @@ async function loadEmailsForPersona(personaEmail) {
         
         let emailsHtml = '';
         if (emails.length === 0) {
-            emailsHtml = '<p style="text-align: center; padding: 20px; color: var(--text-secondary);">Aucun email reçu</p>';
+            emailsHtml = `
+                <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+                    <div style="font-size: 3em; margin-bottom: 15px;">📭</div>
+                    <p style="font-size: 1.1em; margin-bottom: 10px;">Aucun email reçu</p>
+                    <button class="btn" onclick="fetchEmailsForPersona('${personaEmail}')" style="background: var(--info); color: white; margin-top: 10px;">🔄 Récupérer depuis IMAP</button>
+                </div>
+            `;
         } else {
+            emails.sort((a, b) => new Date(b.received_at) - new Date(a.received_at)); // Trier par date décroissante
             emails.forEach(email => {
                 const date = new Date(email.received_at).toLocaleString('fr-FR');
+                const emailType = email.email_type || 'inbox';
                 emailsHtml += `
-                    <div style="padding: 15px; margin-bottom: 10px; background: var(--border-color); border-radius: 8px; border-left: 4px solid ${email.is_read ? 'var(--success)' : 'var(--warning)'};">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                            <strong style="color: var(--text-primary);">${email.subject || '(Sans objet)'}</strong>
-                            ${!email.is_read ? '<span style="background: var(--warning); color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.75em;">Non lu</span>' : ''}
+                    <div style="padding: 15px; margin-bottom: 15px; background: var(--bg-card); border: 2px solid var(--border-color); border-radius: 8px; border-left: 4px solid ${email.is_read ? 'var(--success)' : 'var(--warning)'}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                            <strong style="color: var(--text-primary); font-size: 1.1em; flex: 1; min-width: 200px;">${email.subject || '(Sans objet)'}</strong>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                ${!email.is_read ? '<span style="background: var(--warning); color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.75em; font-weight: 600;">Non lu</span>' : ''}
+                                <span style="background: var(--info); color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.75em; font-weight: 600;">${emailType}</span>
+                            </div>
                         </div>
-                        <div style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 5px;">
-                            <strong>De:</strong> ${email.sender}
+                        <div style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 8px;">
+                            <strong>De:</strong> <span style="color: var(--text-primary);">${email.sender || 'Inconnu'}</span>
                         </div>
-                        <div style="color: var(--text-secondary); font-size: 0.85em; margin-bottom: 10px;">
-                            ${date}
+                        <div style="color: var(--text-secondary); font-size: 0.85em; margin-bottom: 12px;">
+                            📅 ${date}
                         </div>
-                        <div style="color: var(--text-primary); white-space: pre-wrap; max-height: 200px; overflow-y: auto;">
-                            ${email.body || '(Aucun contenu)'}
+                        <div style="color: var(--text-primary); white-space: pre-wrap; max-height: 300px; overflow-y: auto; padding: 10px; background: var(--border-color); border-radius: 5px; margin-bottom: 10px; line-height: 1.5;">
+                            ${(email.body || '(Aucun contenu)').substring(0, 500)}${email.body && email.body.length > 500 ? '...' : ''}
                         </div>
-                        ${!email.is_read ? `<button class="btn" onclick="markEmailRead('${personaEmail}', ${email.id})" style="margin-top: 10px; background: var(--success); color: white;">Marquer comme lu</button>` : ''}
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            ${!email.is_read ? `<button class="btn" onclick="markEmailRead('${personaEmail}', ${email.id})" style="background: var(--success); color: white;">✓ Marquer comme lu</button>` : ''}
+                        </div>
                     </div>
                 `;
             });
         }
         
-        document.getElementById('emailsList').innerHTML = emailsHtml;
+        emailsList.innerHTML = emailsHtml;
     } catch (error) {
-        document.getElementById('emailsList').innerHTML = `<p style="color: var(--error);">Erreur: ${error.message}</p>`;
+        console.error('Erreur chargement emails:', error);
+        const emailsList = document.getElementById('emailsList');
+        if (emailsList) {
+            emailsList.innerHTML = `
+                <div style="text-align: center; padding: 40px 20px; color: var(--error);">
+                    <div style="font-size: 3em; margin-bottom: 15px;">❌</div>
+                    <p style="font-size: 1.1em; margin-bottom: 10px;">Erreur lors du chargement des emails</p>
+                    <p style="font-size: 0.9em; color: var(--text-secondary);">${error.message}</p>
+                    <button class="btn" onclick="loadEmailsForPersona('${personaEmail}')" style="background: var(--info); color: white; margin-top: 15px;">🔄 Réessayer</button>
+                </div>
+            `;
+        }
+    }
+}
+
+async function fetchEmailsForPersona(personaEmail) {
+    const emailsList = document.getElementById('emailsList');
+    if (!emailsList) return;
+    
+    emailsList.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Récupération des emails depuis IMAP...</p>';
+    
+    try {
+        const response = await fetch(`/api/personas/${encodeURIComponent(personaEmail)}/emails/fetch`, {
+            method: 'POST'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(`✅ ${result.message || 'Emails récupérés avec succès'}`);
+            await loadEmailsForPersona(personaEmail);
+        } else {
+            alert(`❌ Erreur: ${result.error || 'Erreur inconnue'}`);
+            await loadEmailsForPersona(personaEmail);
+        }
+    } catch (error) {
+        console.error('Erreur fetch emails:', error);
+        alert(`❌ Erreur: ${error.message}`);
+        await loadEmailsForPersona(personaEmail);
+    }
+}
+
+async function testEmailConnection(personaEmail) {
+    try {
+        const response = await fetch(`/api/personas/${encodeURIComponent(personaEmail)}/emails/test-connection`, {
+            method: 'POST'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(`✅ Connexion réussie!\n\nServeur: ${result.server}:${result.port}`);
+        } else {
+            alert(`❌ Erreur de connexion: ${result.error}\n\nServeur: ${result.server || 'N/A'}:${result.port || 'N/A'}`);
+        }
+    } catch (error) {
+        console.error('Erreur test connexion:', error);
+        alert(`❌ Erreur: ${error.message}`);
     }
 }
 
