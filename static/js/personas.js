@@ -841,6 +841,7 @@ function showPersonaDetail(key) {
                 <div class="btn-group" style="margin-top: 20px;">
                     <button class="btn" onclick="editPersona('${key}'); this.closest('.modal').remove();" style="background: var(--info); color: white;">✏️ Modifier</button>
                     <button class="btn" onclick="testPersona('${key}'); this.closest('.modal').remove();" style="background: var(--warning); color: white;">🧪 Tester</button>
+                    <button class="btn" onclick="showTestEmailModal('${persona.email}', '${persona.name}'); this.closest('.modal').remove();" style="background: var(--success); color: white;">📧 Tester Email</button>
                     ${!persona.alias ? `<button class="btn" onclick="showVariantsModal('${key}'); this.closest('.modal').remove();" style="background: var(--info); color: white;">🔄 Variantes</button>` : ''}
                     <button class="btn" onclick="deletePersona('${key}'); this.closest('.modal').remove();" style="background: var(--error); color: white;">🗑️ Supprimer</button>
                 </div>
