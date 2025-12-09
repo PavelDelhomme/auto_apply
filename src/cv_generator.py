@@ -179,36 +179,47 @@ def generate_cv_for_persona(persona_email, persona_name, cv_data=None, template_
         except:
             return None
 
-def generate_cvs_from_json(cvs_file="/app/config/cvs.json", personas_file="/app/config/personas.json", template_file="/app/templates/cv/cv_template.html"):
+def generate_cvs_from_json(cvs_file="/app/config/cvs.json", personas_file="/app/config/personas.json", template_file="/app/templates/cv/cv_template.html", use_realistic_data=True):
     """
-    Génère des CVs pour tous les personas à partir des données JSON.
-    :param cvs_file: Fichier JSON contenant les données des CVs.
+    Génère des CVs pour tous les personas.
+    :param cvs_file: Fichier JSON contenant les données des CVs (utilisé si use_realistic_data=False).
     :param personas_file: Fichier JSON contenant les personas.
     :param template_file: Fichier template HTML pour les CVs.
+    :param use_realistic_data: Si True, génère des CVs réalistes avec vraies entreprises. Sinon, utilise cvs_file.
     :return: Dictionnaire {persona_email: cv_path}
     """
-    # Charger les CVs
-    with open(cvs_file, 'r', encoding='utf-8') as file:
-        cvs_data = json.load(file)
-    
     # Charger les personas
     with open(personas_file, 'r', encoding='utf-8') as file:
         personas_data = json.load(file)
     
     cv_paths = {}
-    cv_keys = list(cvs_data.keys())
     
     # Générer un CV pour chaque persona
-    for i, (persona_key, persona_info) in enumerate(personas_data.items()):
-        # Utiliser un CV de manière cyclique
-        cv_key = cv_keys[i % len(cv_keys)]
-        cv_data = cvs_data[cv_key]
+    for persona_key, persona_info in personas_data.items():
+        if use_realistic_data:
+            # Générer des données CV réalistes
+            cv_data = None  # Sera généré dans generate_cv_for_persona
+            persona_data = persona_info
+        else:
+            # Utiliser les données du fichier JSON
+            try:
+                with open(cvs_file, 'r', encoding='utf-8') as file:
+                    cvs_data = json.load(file)
+                cv_keys = list(cvs_data.keys())
+                cv_key = cv_keys[hash(persona_key) % len(cv_keys)]
+                cv_data = cvs_data[cv_key]
+                persona_data = None
+            except FileNotFoundError:
+                # Si le fichier n'existe pas, utiliser les données réalistes
+                cv_data = None
+                persona_data = persona_info
         
         cv_path = generate_cv_for_persona(
             persona_info['email'],
             persona_info['name'],
             cv_data,
-            template_file
+            template_file,
+            persona_data=persona_data
         )
         
         if cv_path:
