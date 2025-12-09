@@ -1190,3 +1190,32 @@ async function createVariants() {
         alert(`Erreur: ${error.message}`);
     }
 }
+
+// Exporter les fonctions globalement pour qu'elles soient accessibles depuis onclick
+// Ces fonctions doivent être disponibles après leur définition
+(function() {
+    // Attendre que le DOM soit prêt
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ré-exporter après le chargement
+            if (typeof viewEmails === 'function') {
+                window.viewEmails = viewEmails;
+                window.closeEmailsModal = closeEmailsModal;
+                window.fetchEmailsForPersona = fetchEmailsForPersona;
+                window.testEmailConnection = testEmailConnection;
+                window.markEmailRead = markEmailRead;
+                window.loadEmailsForPersona = loadEmailsForPersona;
+            }
+        });
+    } else {
+        // DOM déjà chargé
+        if (typeof viewEmails === 'function') {
+            window.viewEmails = viewEmails;
+            window.closeEmailsModal = closeEmailsModal;
+            window.fetchEmailsForPersona = fetchEmailsForPersona;
+            window.testEmailConnection = testEmailConnection;
+            window.markEmailRead = markEmailRead;
+            window.loadEmailsForPersona = loadEmailsForPersona;
+        }
+    }
+})();
