@@ -256,7 +256,7 @@ async function renderPersonasList() {
                     <div class="email-info">
                         <span class="email-count ${emails.unread > 0 ? 'unread' : ''}">${emails.total} email(s)</span>
                         ${emails.unread > 0 ? `<span class="email-count unread">${emails.unread} non lu(s)</span>` : ''}
-                        <button class="btn-icon btn-view-emails" onclick="viewEmails('${persona.email}', '${persona.name}')" title="Voir les emails" style="margin-left: auto;">📬</button>
+                        <button class="btn-icon btn-view-emails" onclick="event.stopPropagation(); viewEmails('${persona.email}', '${persona.name}'); return false;" title="Voir les emails" style="margin-left: auto; cursor: pointer;">📬</button>
                     </div>
                 </div>
                 
@@ -532,7 +532,7 @@ async function viewEmails(personaEmail, personaName) {
     await loadEmailsForPersona(personaEmail);
 }
 
-async function loadEmailsForPersona(personaEmail) {
+loadEmailsForPersona = async function(personaEmail) {
     const emailsList = document.getElementById('emailsList');
     if (!emailsList) return;
     
@@ -603,7 +603,7 @@ async function loadEmailsForPersona(personaEmail) {
     }
 }
 
-async function fetchEmailsForPersona(personaEmail) {
+fetchEmailsForPersona = async function(personaEmail) {
     const emailsList = document.getElementById('emailsList');
     if (!emailsList) return;
     
@@ -629,7 +629,7 @@ async function fetchEmailsForPersona(personaEmail) {
     }
 }
 
-async function testEmailConnection(personaEmail) {
+testEmailConnection = async function(personaEmail) {
     try {
         const response = await fetch(`/api/personas/${encodeURIComponent(personaEmail)}/emails/test-connection`, {
             method: 'POST'
@@ -647,14 +647,14 @@ async function testEmailConnection(personaEmail) {
     }
 }
 
-function closeEmailsModal() {
+closeEmailsModal = function() {
     const modal = document.getElementById('emailsModal');
     if (modal) {
         modal.remove();
     }
 }
 
-async function markEmailRead(personaEmail, emailId) {
+markEmailRead = async function(personaEmail, emailId) {
     try {
         await fetch(`/api/personas/${encodeURIComponent(personaEmail)}/emails/${emailId}/read`, { method: 'POST' });
         await viewEmails(personaEmail, allPersonas[Object.keys(allPersonas).find(k => allPersonas[k].email === personaEmail)]?.name || personaEmail);
