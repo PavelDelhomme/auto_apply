@@ -362,14 +362,24 @@ function renderSearchesList() {
 function changePage(page) {
     const totalPages = Math.ceil(Object.keys(allSearches).length / itemsPerPage);
     if (page < 1 || page > totalPages) return;
+    
     currentPage = page;
     renderSearchesList();
     
-    // Scroll vers la liste des recherches au lieu du haut de la page
+    // Scroll vers la liste des recherches en gardant la position relative
     setTimeout(() => {
         const searchesList = document.getElementById('searchesList');
         if (searchesList) {
-            searchesList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Trouver le conteneur parent (la card ou le conteneur principal)
+            const container = searchesList.closest('.card') || searchesList.closest('.main-content');
+            if (container) {
+                const containerTop = container.getBoundingClientRect().top + window.pageYOffset;
+                // Scroll vers le conteneur en gardant un peu d'espace en haut
+                window.scrollTo({ top: containerTop - 20, behavior: 'smooth' });
+            } else {
+                // Fallback: scroll vers la liste avec block: 'nearest' pour éviter de remonter trop haut
+                searchesList.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
         }
     }, 100);
 }

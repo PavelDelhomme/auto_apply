@@ -411,14 +411,27 @@ function showSearchDetailsModal(search, searchKey) {
 function changeActiveSearchesPage(page) {
     const totalPages = Math.ceil(Object.keys(allActiveSearches).length / activeSearchesPerPage);
     if (page < 1 || page > totalPages) return;
+    
+    // Sauvegarder la position actuelle du scroll
+    const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+    
     activeSearchesPage = page;
     renderActiveSearches();
     
-    // Scroll vers la section "Recherches Actives" au lieu du haut de la page
+    // Scroll vers la section "Recherches Actives" en gardant la position relative
     setTimeout(() => {
         const activeSearchesSection = document.getElementById('activeSearchesContainer');
         if (activeSearchesSection) {
-            activeSearchesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Trouver le conteneur parent (la card)
+            const card = activeSearchesSection.closest('.card');
+            if (card) {
+                const cardTop = card.getBoundingClientRect().top + window.pageYOffset;
+                // Scroll vers la card en gardant un peu d'espace en haut
+                window.scrollTo({ top: cardTop - 20, behavior: 'smooth' });
+            } else {
+                // Fallback: scroll vers le conteneur avec block: 'nearest' pour éviter de remonter trop haut
+                activeSearchesSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
         }
     }, 100);
 }
@@ -545,14 +558,24 @@ function renderLogs() {
 function changeLogsPage(page) {
     const totalPages = Math.ceil(allLogs.length / logsPerPage);
     if (page < 1 || page > totalPages) return;
+    
     logsPage = page;
     renderLogs();
     
-    // Scroll vers la section "Logs" au lieu du haut de la page
+    // Scroll vers la section "Logs" en gardant la position relative
     setTimeout(() => {
         const logsSection = document.getElementById('logsContainer');
         if (logsSection) {
-            logsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Trouver le conteneur parent (la card)
+            const card = logsSection.closest('.card');
+            if (card) {
+                const cardTop = card.getBoundingClientRect().top + window.pageYOffset;
+                // Scroll vers la card en gardant un peu d'espace en haut
+                window.scrollTo({ top: cardTop - 20, behavior: 'smooth' });
+            } else {
+                // Fallback: scroll vers le conteneur avec block: 'nearest' pour éviter de remonter trop haut
+                logsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
         }
     }, 100);
 }
