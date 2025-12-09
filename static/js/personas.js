@@ -159,6 +159,13 @@ async function renderPersonasList() {
         );
     }
     
+    // Trier par ordre alphabétique du nom
+    personasToShow.sort((a, b) => {
+        const nameA = (a[1].name || '').toLowerCase();
+        const nameB = (b[1].name || '').toLowerCase();
+        return nameA.localeCompare(nameB, 'fr');
+    });
+    
     const totalPersonas = personasToShow.length;
     
     if (totalPersonas === 0) {
@@ -843,6 +850,47 @@ function showPersonaDetail(key) {
     document.body.appendChild(modal);
 }
 
+async function testEmailSend(fromEmail, toEmail) {
+    if (!fromEmail || !toEmail) {
+        alert('Veuillez sélectionner un expéditeur et un destinataire.');
+        return;
+    }
+    
+    if (fromEmail === toEmail) {
+        alert('L\'expéditeur et le destinataire doivent être différents.');
+        return;
+    }
+    
+    const subject = prompt('Sujet de l\'email de test:', 'Test d\'envoi de mail entre personas');
+    if (!subject) return;
+    
+    const body = prompt('Corps de l\'email de test:', 'Ceci est un test d\'envoi de mail entre personas.');
+    if (body === null) return;
+    
+    try {
+        const response = await fetch('/api/personas/test-email-send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                from_email: fromEmail,
+                to_email: toEmail,
+                subject: subject,
+                body: body || 'Ceci est un test d\'envoi de mail entre personas.'
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(`✅ ${result.message}\n\nServeur: ${result.server}:${result.port}`);
+        } else {
+            alert(`❌ Erreur: ${result.error}\n\nServeur: ${result.server || 'N/A'}:${result.port || 'N/A'}`);
+        }
+    } catch (error) {
+        alert(`❌ Erreur: ${error.message}`);
+    }
+}
+
 async function testPersona(key) {
     const persona = allPersonas[key];
     if (!persona) return;
@@ -868,6 +916,91 @@ async function testPersona(key) {
 function testCurrentPersona() {
     if (currentPersonaKey) {
         testPersona(currentPersonaKey);
+    }
+}
+
+function showTestEmailModal(fromEmail, fromName) {
+    // Créer une liste de tous les personas pour le destinataire
+    const personasList = Object.entries(allPersonas)
+        .map(([key, p]) => `<option value="${p.email}">${p.name} (${p.email})</option>`)
+        .join('');
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 style="color: var(--text-title); margin: 0;">📧 Tester l'envoi d'email</h2>
+                <button class="modal-close" onclick="this.closest('.modal').remove()">✕</button>
+            </div>
+            <div style="padding: 20px;">
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Expéditeur:</label>
+                    <input type="text" id="testEmailFrom" value="${fromEmail}" readonly style="width: 100%; padding: 10px; border: 2px solid var(--border-color); border-radius: 5px; background: var(--bg-card); color: var(--text-primary);">
+                    <small style="color: var(--text-secondary);">${fromName}</small>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Destinataire:</label>
+                    <select id="testEmailTo" style="width: 100%; padding: 10px; border: 2px solid var(--border-color); border-radius: 5px; background: var(--bg-card); color: var(--text-primary);">
+                        ${personasList}
+                    </select>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Sujet:</label>
+                    <input type="text" id="testEmailSubject" value="Test d'envoi de mail entre personas" style="width: 100%; padding: 10px; border: 2px solid var(--border-color); border-radius: 5px; background: var(--bg-card); color: var(--text-primary);">
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Message:</label>
+                    <textarea id="testEmailBody" rows="5" style="width: 100%; padding: 10px; border: 2px solid var(--border-color); border-radius: 5px; background: var(--bg-card); color: var(--text-primary);">Ceci est un test d'envoi de mail entre personas.</textarea>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn" onclick="this.closest('.modal').remove()" style="background: var(--text-secondary); color: white;">Annuler</button>
+                    <button class="btn" onclick="sendTestEmail()" style="background: var(--success); color: white;">📧 Envoyer</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+async function sendTestEmail() {
+    const fromEmail = document.getElementById('testEmailFrom')?.value;
+    const toEmail = document.getElementById('testEmailTo')?.value;
+    const subject = document.getElementById('testEmailSubject')?.value;
+    const body = document.getElementById('testEmailBody')?.value;
+    
+    if (!fromEmail || !toEmail) {
+        alert('Veuillez sélectionner un expéditeur et un destinataire.');
+        return;
+    }
+    
+    if (fromEmail === toEmail) {
+        alert('L\'expéditeur et le destinataire doivent être différents.');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/personas/test-email-send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                from_email: fromEmail,
+                to_email: toEmail,
+                subject: subject || 'Test d\'envoi de mail entre personas',
+                body: body || 'Ceci est un test d\'envoi de mail entre personas.'
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(`✅ ${result.message}\n\nServeur: ${result.server}:${result.port}`);
+            document.querySelector('.modal.active')?.remove();
+        } else {
+            alert(`❌ Erreur: ${result.error}\n\nServeur: ${result.server || 'N/A'}:${result.port || 'N/A'}`);
+        }
+    } catch (error) {
+        alert(`❌ Erreur: ${error.message}`);
     }
 }
 

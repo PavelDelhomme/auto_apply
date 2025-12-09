@@ -155,17 +155,29 @@ def favicon():
     </svg>'''
     return Response(svg, mimetype='image/svg+xml', headers={'Cache-Control': 'public, max-age=3600'})
 
+def sort_personas_by_name(personas_dict):
+    """Trie les personas par ordre alphabétique du nom."""
+    # Convertir en liste de tuples (key, persona) et trier par nom
+    sorted_items = sorted(
+        personas_dict.items(),
+        key=lambda x: x[1].get('name', '').lower() if x[1].get('name') else ''
+    )
+    # Reconstruire le dictionnaire (Python 3.7+ garantit l'ordre d'insertion)
+    return {key: persona for key, persona in sorted_items}
+
 @app.route('/api/personas')
 def api_personas():
-    """API pour récupérer les personas."""
+    """API pour récupérer les personas (triés par ordre alphabétique)."""
     personas = load_personas()
-    return jsonify(personas)
+    sorted_personas = sort_personas_by_name(personas)
+    return jsonify(sorted_personas)
 
 @app.route('/api/personas/base')
 def api_base_personas():
-    """API pour récupérer uniquement les personas de base."""
+    """API pour récupérer uniquement les personas de base (triés par ordre alphabétique)."""
     base_personas = persona_manager.get_base_personas()
-    return jsonify(base_personas)
+    sorted_personas = sort_personas_by_name(base_personas)
+    return jsonify(sorted_personas)
 
 @app.route('/api/personas/<persona_key>')
 def api_get_persona(persona_key):
@@ -685,6 +697,136 @@ def api_test_email_connection(persona_email):
             
     except Exception as e:
         logger.error(f"Erreur test connexion email pour {persona_email}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/personas/test-email-send', methods=['POST'])
+def api_test_email_send():
+    """Teste l'envoi d'un email entre deux personas."""
+    from urllib.parse import unquote
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    import socket
+    
+    data = request.json
+    from_email = data.get('from_email')
+    to_email = data.get('to_email')
+    subject = data.get('subject', 'Test d\'envoi de mail entre personas')
+    body = data.get('body', 'Ceci est un test d\'envoi de mail entre personas.')
+    
+    if not from_email or not to_email:
+        return jsonify({'success': False, 'error': 'from_email et to_email sont requis'}), 400
+    
+    try:
+        # Récupérer les personas
+        from_persona = persona_manager.get_persona_by_email(from_email)
+        to_persona = persona_manager.get_persona_by_email(to_email)
+        
+        if not from_persona:
+            return jsonify({'success': False, 'error': f'Persona expéditeur non trouvé: {from_email}'}), 404
+        if not to_persona:
+            return jsonify({'success': False, 'error': f'Persona destinataire non trouvé: {to_email}'}), 404
+        
+        # Récupérer le mot de passe de l'expéditeur
+        password = from_persona.get('password')
+        if not password:
+            return jsonify({'success': False, 'error': 'Mot de passe non configuré pour le persona expéditeur'}), 400
+        
+        # Déterminer le serveur SMTP
+        email_domain = from_email.split('@')[1].lower()
+        
+        # Vérifier si le persona a une configuration email personnalisée
+        smtp_server = from_persona.get('email_config', {}).get('smtp_server')
+        smtp_port = from_persona.get('email_config', {}).get('smtp_port', 465)
+        
+        if not smtp_server:
+            # Utiliser la liste par défaut des serveurs SMTP
+            smtp_servers = {
+                'gmx.com': 'smtp.gmx.com',
+                'gmx.fr': 'smtp.gmx.com',
+                'gmail.com': 'smtp.gmail.com',
+                'outlook.com': 'smtp-mail.outlook.com',
+                'hotmail.com': 'smtp-mail.outlook.com',
+                'live.com': 'smtp-mail.outlook.com',
+                'yahoo.com': 'smtp.mail.yahoo.com',
+                'yahoo.fr': 'smtp.mail.yahoo.com',
+                'caramail.com': 'smtp.caramail.com',
+                'caramail.fr': 'smtp.caramail.com',
+                'orange.fr': 'smtp.orange.fr',
+                'wanadoo.fr': 'smtp.orange.fr',
+                'free.fr': 'smtp.free.fr',
+                'laposte.net': 'smtp.laposte.net',
+                'sfr.fr': 'smtp.sfr.fr',
+                'numericable.fr': 'smtp.numericable.fr'
+            }
+            
+            smtp_server = smtp_servers.get(email_domain)
+            if not smtp_server:
+                # Essayer avec le format standard
+                smtp_server = f'smtp.{email_domain}'
+        
+        # Créer le message
+        msg = MIMEMultipart()
+        msg['From'] = from_email
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain', 'utf-8'))
+        
+        # Envoyer l'email
+        try:
+            # Essayer avec SSL d'abord (port 465)
+            if smtp_port == 465:
+                server = smtplib.SMTP_SSL(smtp_server, smtp_port)
+            else:
+                # Port 587 avec STARTTLS
+                server = smtplib.SMTP(smtp_server, smtp_port)
+                server.starttls()
+            
+            server.login(from_email, password)
+            server.send_message(msg)
+            server.quit()
+            
+            log_message(f"Email de test envoyé de {from_email} vers {to_email}", "success")
+            return jsonify({
+                'success': True,
+                'message': f'Email envoyé avec succès de {from_email} vers {to_email}',
+                'from': from_email,
+                'to': to_email,
+                'server': smtp_server,
+                'port': smtp_port
+            })
+        except smtplib.SMTPAuthenticationError as e:
+            return jsonify({
+                'success': False,
+                'error': f'Erreur d\'authentification SMTP: {str(e)}. Vérifiez le mot de passe.',
+                'server': smtp_server,
+                'port': smtp_port
+            }), 401
+        except smtplib.SMTPException as e:
+            return jsonify({
+                'success': False,
+                'error': f'Erreur SMTP: {str(e)}',
+                'server': smtp_server,
+                'port': smtp_port
+            }), 500
+        except socket.gaierror as e:
+            return jsonify({
+                'success': False,
+                'error': f'Impossible de résoudre le nom du serveur {smtp_server}. Vérifiez la configuration.',
+                'server': smtp_server,
+                'port': smtp_port
+            }), 500
+        except Exception as e:
+            logger.error(f"Erreur inattendue lors de l'envoi d'email de {from_email} vers {to_email}: {e}")
+            return jsonify({
+                'success': False,
+                'error': f'Erreur lors de l\'envoi: {str(e)}',
+                'server': smtp_server,
+                'port': smtp_port
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Erreur test envoi email: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/personas/<path:persona_email>/emails/fetch', methods=['POST'])
