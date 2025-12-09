@@ -238,7 +238,7 @@ async function renderPersonasList() {
                     ${cv ? `
                         <div class="cv-info">
                             <span class="cv-status exists">✓ Disponible</span>
-                            <span style="flex: 1; color: var(--text-secondary);">${cv.filename}</span>
+                            <span class="cv-filename" title="${cv.filename}">${cv.filename}</span>
                             <button class="btn-icon btn-view-cv" onclick="viewCV('${persona.email}')" title="Voir le CV">👁️</button>
                             <button class="btn-icon btn-download-cv" onclick="downloadCV('${persona.email}')" title="Télécharger">⬇️</button>
                         </div>

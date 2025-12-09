@@ -94,6 +94,40 @@
     background: rgba(255,255,255,0.05);
 }
 
+/* CV filename truncation */
+.cv-filename {
+    flex: 1;
+    min-width: 0;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    cursor: help;
+    margin: 0 8px;
+}
+
+/* Email info and CV info containers */
+.cv-info, .email-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    background: var(--border-color);
+    border-radius: 5px;
+    margin-bottom: 8px;
+    font-size: 0.85em;
+    overflow: hidden;
+}
+
+.cv-info {
+    flex-wrap: nowrap;
+}
+
+.cv-info .btn-icon {
+    flex-shrink: 0;
+}
+
 /* Pagination styles - Réutilisables pour toutes les pages */
 .pagination-container {
     display: flex;
