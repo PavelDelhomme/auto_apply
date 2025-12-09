@@ -580,4 +580,4 @@ def mark_as_test_data(table, ids, is_test=True):
         print(f"Erreur lors du marquage des données: {e}")
         return 0
     finally:
-    conn.close()
+        conn.close()
