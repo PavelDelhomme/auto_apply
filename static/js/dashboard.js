@@ -215,18 +215,60 @@ function renderActiveSearches() {
         `;
     }
     
-    // Ajouter la pagination avec le même style que les boutons de filtrage
+    // Ajouter la pagination avec le même style que les boutons de filtrage (sur une seule ligne)
     if (totalPages > 1) {
         html += `
-            <div class="pagination-container">
-                <button class="pagination-btn" onclick="changeActiveSearchesPage(${activeSearchesPage - 1})" ${activeSearchesPage === 1 ? 'disabled' : ''}>
+            <div class="pagination-container" style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 15px; padding: 15px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%); border-radius: 12px; border: 2px solid var(--border-color); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2); flex-wrap: wrap;">
+                <button class="pagination-btn" onclick="changeActiveSearchesPage(${activeSearchesPage - 1})" ${activeSearchesPage === 1 ? 'disabled' : ''} style="
+                    background: linear-gradient(135deg, var(--text-title) 0%, #5b21b6 100%);
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 10px;
+                    font-weight: 600;
+                    font-size: 0.95em;
+                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+                    transition: all 0.3s ease;
+                    border: none;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                " onmouseenter="if (!this.disabled) { this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'; }" 
+                   onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)';"
+                   ${activeSearchesPage === 1 ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>
                     <span>←</span>
                     <span>Précédent</span>
                 </button>
-                <span class="pagination-info">
+                <span class="pagination-info" style="
+                    color: var(--text-title);
+                    font-weight: 700;
+                    padding: 12px 20px;
+                    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+                    border-radius: 10px;
+                    border: 2px solid var(--text-title);
+                    font-size: 0.95em;
+                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+                    white-space: nowrap;
+                ">
                     Page <strong>${activeSearchesPage}</strong> sur <strong>${totalPages}</strong> (${totalItems} recherche${totalItems > 1 ? 's' : ''})
                 </span>
-                <button class="pagination-btn" onclick="changeActiveSearchesPage(${activeSearchesPage + 1})" ${activeSearchesPage === totalPages ? 'disabled' : ''}>
+                <button class="pagination-btn" onclick="changeActiveSearchesPage(${activeSearchesPage + 1})" ${activeSearchesPage === totalPages ? 'disabled' : ''} style="
+                    background: linear-gradient(135deg, var(--text-title) 0%, #5b21b6 100%);
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 10px;
+                    font-weight: 600;
+                    font-size: 0.95em;
+                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+                    transition: all 0.3s ease;
+                    border: none;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                " onmouseenter="if (!this.disabled) { this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'; }" 
+                   onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)';"
+                   ${activeSearchesPage === totalPages ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>
                     <span>Suivant</span>
                     <span>→</span>
                 </button>

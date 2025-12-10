@@ -1191,31 +1191,48 @@ async function createVariants() {
     }
 }
 
-// Exporter les fonctions globalement pour qu'elles soient accessibles depuis onclick
+// Exporter TOUTES les fonctions globalement pour qu'elles soient accessibles depuis onclick
 // Ces fonctions doivent être disponibles après leur définition
 (function() {
+    function exportFunctions() {
+        // Fonctions emails
+        if (typeof viewEmails === 'function') window.viewEmails = viewEmails;
+        if (typeof closeEmailsModal === 'function') window.closeEmailsModal = closeEmailsModal;
+        if (typeof fetchEmailsForPersona === 'function') window.fetchEmailsForPersona = fetchEmailsForPersona;
+        if (typeof testEmailConnection === 'function') window.testEmailConnection = testEmailConnection;
+        if (typeof markEmailRead === 'function') window.markEmailRead = markEmailRead;
+        if (typeof loadEmailsForPersona === 'function') window.loadEmailsForPersona = loadEmailsForPersona;
+        
+        // Fonctions CV
+        if (typeof viewCV === 'function') window.viewCV = viewCV;
+        if (typeof downloadCV === 'function') window.downloadCV = downloadCV;
+        
+        // Fonctions personas
+        if (typeof showPersonaDetail === 'function') window.showPersonaDetail = showPersonaDetail;
+        if (typeof editPersona === 'function') window.editPersona = editPersona;
+        if (typeof testPersona === 'function') window.testPersona = testPersona;
+        if (typeof deletePersona === 'function') window.deletePersona = deletePersona;
+        if (typeof showVariantsModal === 'function') window.showVariantsModal = showVariantsModal;
+        if (typeof showCreatePersonaModal === 'function') window.showCreatePersonaModal = showCreatePersonaModal;
+        if (typeof closePersonaModal === 'function') window.closePersonaModal = closePersonaModal;
+        if (typeof savePersona === 'function') window.savePersona = savePersona;
+        if (typeof loadAllPersonas === 'function') window.loadAllPersonas = loadAllPersonas;
+        if (typeof loadBasePersonas === 'function') window.loadBasePersonas = loadBasePersonas;
+        if (typeof filterPersonas === 'function') window.filterPersonas = filterPersonas;
+        if (typeof togglePersona === 'function') window.togglePersona = togglePersona;
+        if (typeof selectAllPersonas === 'function') window.selectAllPersonas = selectAllPersonas;
+        if (typeof deselectAllPersonas === 'function') window.deselectAllPersonas = deselectAllPersonas;
+        if (typeof changePersonasPage === 'function') window.changePersonasPage = changePersonasPage;
+    }
+    
     // Attendre que le DOM soit prêt
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-            // Ré-exporter après le chargement
-            if (typeof viewEmails === 'function') {
-                window.viewEmails = viewEmails;
-                window.closeEmailsModal = closeEmailsModal;
-                window.fetchEmailsForPersona = fetchEmailsForPersona;
-                window.testEmailConnection = testEmailConnection;
-                window.markEmailRead = markEmailRead;
-                window.loadEmailsForPersona = loadEmailsForPersona;
-            }
-        });
+        document.addEventListener('DOMContentLoaded', exportFunctions);
     } else {
         // DOM déjà chargé
-        if (typeof viewEmails === 'function') {
-            window.viewEmails = viewEmails;
-            window.closeEmailsModal = closeEmailsModal;
-            window.fetchEmailsForPersona = fetchEmailsForPersona;
-            window.testEmailConnection = testEmailConnection;
-            window.markEmailRead = markEmailRead;
-            window.loadEmailsForPersona = loadEmailsForPersona;
-        }
+        exportFunctions();
     }
+    
+    // Ré-exporter après un court délai pour s'assurer que toutes les fonctions sont définies
+    setTimeout(exportFunctions, 100);
 })();
