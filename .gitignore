@@ -29,6 +29,7 @@ ENV/
 
 # Fichiers de configuration sensibles (personas avec mots de passe)
 config/personas.json
+personas.json
 config/ovh_config.json
 
 # Rapports contenant des informations sensibles
