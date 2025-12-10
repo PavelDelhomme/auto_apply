@@ -662,6 +662,14 @@
                 <span class="drawer-item-icon">👥</span>
                 <span>Personas</span>
             </a>
+            <a href="/mailbox" class="drawer-item {% if request.endpoint == 'mailbox_page' %}active{% endif %}">
+                <span class="drawer-item-icon">📧</span>
+                <span>Boîte Mail</span>
+            </a>
+            <a href="/mailbox/test-all" class="drawer-item {% if request.endpoint == 'mailbox_test_all_page' %}active{% endif %}">
+                <span class="drawer-item-icon">🔌</span>
+                <span>Test Connexions Email</span>
+            </a>
             <a href="/searches" class="drawer-item {% if request.endpoint == 'searches_page' %}active{% endif %}">
                 <span class="drawer-item-icon">🔍</span>
                 <span>Recherches</span>

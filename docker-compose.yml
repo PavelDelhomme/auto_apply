@@ -13,6 +13,7 @@ services:
       - ./data:/app/data
       - ./src:/app/src
       - ./tests:/app/tests
+      - ./scripts:/app/scripts
     environment:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1

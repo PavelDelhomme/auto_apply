@@ -22,28 +22,40 @@ def is_test_persona(persona_key, persona_data):
                   'test.persona.extended' in email.lower()):
         return True
     
-    # Noms de test
+    # Noms de test (plus complets)
     test_names = [
         'test persona extended',
         'test persona api',
         'duplicated persona',
         'updated name',
         'variant name',
-        'test'
+        'test',
+        'test persona',
+        'persona test'
     ]
     
     if name and any(test_name in name.lower() for test_name in test_names):
         return True
     
-    # Email null ou vide
-    if not email or email == 'null' or email is None:
+    # Email null ou vide ou "N/A"
+    if not email or email == 'null' or email is None or email.upper() == 'N/A':
+        return True
+    
+    # Clés de persona qui commencent par "test" ou contiennent "test"
+    if persona_key and 'test' in persona_key.lower():
         return True
     
     return False
 
 def clean_test_personas():
     """Nettoie les personas de test."""
-    manager = PersonaManager("/app/config/personas.json")
+    # Déterminer le chemin du fichier personas.json
+    if os.path.exists('/app/config/personas.json'):
+        personas_file = '/app/config/personas.json'
+    else:
+        personas_file = os.path.join(os.path.dirname(__file__), '..', 'config', 'personas.json')
+    
+    manager = PersonaManager(personas_file)
     
     print("🔍 Recherche des personas de test...")
     
@@ -57,8 +69,10 @@ def clean_test_personas():
         return
     
     print(f"\n📋 {len(personas_to_delete)} persona(s) de test trouvé(s):")
-    for key, name, email in personas_to_delete:
-        print(f"  - {name} ({email})")
+    for key, name, email in personas_to_delete[:20]:  # Afficher les 20 premiers
+        print(f"  - {key}: {name} ({email})")
+    if len(personas_to_delete) > 20:
+        print(f"  ... et {len(personas_to_delete) - 20} autres")
     
     # Supprimer les personas de test
     for key, _, _ in personas_to_delete:
@@ -68,6 +82,7 @@ def clean_test_personas():
     # Sauvegarder
     if manager.save_personas():
         print(f"\n✅ {len(personas_to_delete)} persona(s) de test supprimé(s) avec succès.")
+        print(f"📊 Il reste {len(manager.personas)} persona(s) valide(s).")
     else:
         print("\n❌ Erreur lors de la sauvegarde.")
         sys.exit(1)

@@ -136,6 +136,16 @@ clean-test-personas: ## Nettoie les personas de test (testextended@example.com, 
 	@printf "$(GREEN)🧹 Nettoyage des personas de test...$(NC)\n"
 	@docker-compose -f $(COMPOSE_FILE) exec -T $(SERVICE_NAME) python /app/scripts/clean_test_personas.py || printf "$(YELLOW)⚠️  Le conteneur n'est pas en cours d'exécution. Démarrez-le avec 'make start'$(NC)\n"
 
+setup-ovh-catchall: ## Configure le catch-all email OVH (nécessite config/ovh_config.json)
+	@printf "$(GREEN)📧 Configuration du catch-all OVH...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec -T $(SERVICE_NAME) pip install -q ovh 2>/dev/null || true
+	@docker-compose -f $(COMPOSE_FILE) exec -e PYTHONPATH=/app -T $(SERVICE_NAME) python3 /app/scripts/setup_ovh_catchall.py
+
+create-ovh-emails: ## Crée des emails OVH automatiquement (nécessite config/ovh_config.json)
+	@printf "$(GREEN)📧 Création d'emails OVH...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec -T $(SERVICE_NAME) pip install -q ovh 2>/dev/null || true
+	@docker-compose -f $(COMPOSE_FILE) exec -e PYTHONPATH=/app -T $(SERVICE_NAME) python3 /app/scripts/create_ovh_emails.py
+
 pull: ## Met à jour les images de base
 	@printf "$(GREEN)⬇️  Mise à jour des images de base...$(NC)\n"
 	docker-compose -f $(COMPOSE_FILE) pull
@@ -284,6 +294,27 @@ test-reports: ## Copie les rapports de test depuis le conteneur vers le réperto
 	@docker cp $$(docker-compose -f $(COMPOSE_FILE) ps -q $(SERVICE_NAME)):/tmp/test-results-*.xml ./test_reports/xml/ 2>/dev/null || true
 	@printf "$(GREEN)✅ Rapports copiés dans ./test_reports/$(NC)\n"
 	@printf "$(YELLOW)💡 Ouvrez ./test_reports/coverage_html/index.html dans votre navigateur$(NC)\n"
+
+test-email: ## Teste les connexions email de tous les personas et génère un rapport
+	@printf "$(GREEN)📧 Test des connexions email pour tous les personas...$(NC)\n"
+	@printf "$(YELLOW)⏳ Vérification que le conteneur est en cours d'exécution...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -c "import sys; print('✅ Python:', sys.version.split()[0])" 2>/dev/null || (printf "$(RED)❌ Le conteneur n'est pas accessible. Démarrez-le avec 'make start'$(NC)\n"; exit 1)
+	@printf "$(GREEN)🚀 Lancement du test des emails...$(NC)\n"
+	@printf "$(YELLOW)⏳ Cela peut prendre plusieurs minutes selon le nombre de personas...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) exec -e PYTHONPATH=/app -T $(SERVICE_NAME) python3 /app/scripts/test_all_personas_email.py; \
+	EXIT_CODE=$$?; \
+	if [ "$$EXIT_CODE" -eq 0 ] || [ "$$EXIT_CODE" -eq 130 ] || [ "$$EXIT_CODE" -eq 124 ]; then \
+		printf "\n"; \
+		printf "$(GREEN)✅ Test terminé!$(NC)\n"; \
+	else \
+		printf "\n"; \
+		printf "$(YELLOW)⚠️  Le test s'est terminé avec le code d'erreur $$EXIT_CODE$(NC)\n"; \
+		printf "$(YELLOW)💡 Vérifiez les logs ci-dessus pour plus de détails$(NC)\n"; \
+	fi
+	@printf "$(YELLOW)📄 Copie du rapport depuis le conteneur...$(NC)\n"
+	@docker cp $$(docker-compose -f $(COMPOSE_FILE) ps -q $(SERVICE_NAME)):/app/EMAIL_STATUS_REPORT.md ./EMAIL_STATUS_REPORT.md 2>/dev/null || printf "$(YELLOW)⚠️  Le rapport n'a pas pu être copié (peut-être déjà présent localement)$(NC)\n"
+	@printf "$(GREEN)✅ Rapport disponible dans EMAIL_STATUS_REPORT.md$(NC)\n"
+	@printf "$(YELLOW)💡 Consultez aussi GUIDE_CREATION_BOITES_MAIL.md pour créer de nouvelles boîtes mail$(NC)\n"
 
 install-deps: ## Installe les dépendances localement (sans Docker)
 	@printf "$(GREEN)📦 Installation des dépendances Python...$(NC)\n"

@@ -109,6 +109,16 @@ def personas_page():
     """Page de gestion des personas."""
     return render_template('pages/personas.html')
 
+@app.route('/mailbox')
+def mailbox_page():
+    """Page de gestion des boîtes mail des personas."""
+    return render_template('pages/mailbox.html')
+
+@app.route('/mailbox/test-all')
+def mailbox_test_all_page():
+    """Page de test de connexion email pour tous les personas."""
+    return render_template('pages/mailbox_test_all.html')
+
 @app.route('/searches')
 def searches_page():
     """Page de gestion des recherches."""
@@ -588,9 +598,86 @@ def api_test_email_connection(persona_email):
             return jsonify({'success': False, 'error': 'Persona non trouvé'}), 404
         
         # Récupérer le mot de passe
+        # Pour les alias GMX, utiliser le mot de passe du persona lui-même ou chercher un persona principal GMX
         password = persona.get('password')
+        email_domain = persona_email.split('@')[1].lower()
+        
+        if not password and persona.get('alias'):
+            # Si c'est un alias sans mot de passe
+            parent_email = persona.get('parent')
+            
+            # Pour GMX, les alias utilisent le mot de passe du compte principal GMX
+            if email_domain in ['gmx.com', 'gmx.fr'] and parent_email:
+                parent_domain = parent_email.split('@')[1].lower() if '@' in parent_email else ''
+                # Si le parent est aussi GMX, utiliser son mot de passe (même s'il est alias, on remonte jusqu'à trouver un mot de passe)
+                if parent_domain in ['gmx.com', 'gmx.fr']:
+                    # Le parent est aussi GMX, utiliser son mot de passe
+                    parent_persona = persona_manager.get_persona_by_email(parent_email)
+                    if parent_persona:
+                        parent_password = parent_persona.get('password')
+                        # Si le parent n'a pas de mot de passe mais est aussi un alias, remonter la chaîne
+                        if not parent_password and parent_persona.get('alias') and parent_persona.get('parent'):
+                            # Remonter jusqu'à trouver un mot de passe GMX
+                            current_parent = parent_persona.get('parent')
+                            max_depth = 10  # Limite de profondeur pour éviter les boucles infinies
+                            depth = 0
+                            while current_parent and depth < max_depth:
+                                current_parent_persona = persona_manager.get_persona_by_email(current_parent)
+                                if current_parent_persona:
+                                    current_parent_password = current_parent_persona.get('password')
+                                    if current_parent_password:
+                                        password = current_parent_password
+                                        logger.info(f"Utilisation du mot de passe du persona GMX {current_parent} (remontée de chaîne) pour l'alias {persona_email}")
+                                        break
+                                    # Continuer à remonter si pas de mot de passe
+                                    if current_parent_persona.get('alias') and current_parent_persona.get('parent'):
+                                        current_parent = current_parent_persona.get('parent')
+                                    else:
+                                        break
+                                else:
+                                    break
+                                depth += 1
+                        elif parent_password:
+                            password = parent_password
+                else:
+                    # Le parent est sur un autre domaine (ex: caramail), chercher un persona principal GMX
+                    # Chercher un persona principal GMX avec un mot de passe
+                    all_personas = persona_manager.get_all_personas()
+                    # Prioriser les personas qui ont un nom similaire ou qui sont souvent utilisés
+                    gmx_principals = []
+                    for p in all_personas.values():
+                        if (not p.get('alias', False) and 
+                            p.get('email', '').split('@')[1].lower() in ['gmx.com', 'gmx.fr'] and 
+                            p.get('password')):
+                            gmx_principals.append(p)
+                    
+                    if gmx_principals:
+                        # Prendre le premier persona principal GMX trouvé
+                        # TODO: Pourrait être amélioré pour permettre de spécifier quel persona utiliser
+                        password = gmx_principals[0].get('password')
+                        logger.info(f"Utilisation du mot de passe du persona principal GMX {gmx_principals[0].get('email')} pour l'alias {persona_email}")
+            else:
+                # Pour les autres domaines, utiliser le mot de passe du parent
+                if parent_email:
+                    parent_persona = persona_manager.get_persona_by_email(parent_email)
+                    if parent_persona:
+                        password = parent_persona.get('password')
+        
         if not password:
-            return jsonify({'success': False, 'error': 'Mot de passe non configuré pour ce persona'}), 400
+            error_msg = 'Mot de passe non configuré.'
+            if persona.get('alias'):
+                if email_domain in ['gmx.com', 'gmx.fr']:
+                    error_msg += ' Pour les alias GMX, vous devez configurer le mot de passe du compte principal GMX dans personas.json.'
+                else:
+                    error_msg += f' Vérifiez que le persona ou son parent ({persona.get("parent", "N/A")}) a un mot de passe configuré.'
+            else:
+                error_msg += ' Ajoutez le mot de passe dans personas.json ou utilisez l\'interface pour le mettre à jour.'
+            
+            return jsonify({
+                'success': False, 
+                'error': error_msg,
+                'hint': 'Vous pouvez mettre à jour le mot de passe via l\'API PUT /api/personas/<email>/password'
+            }), 400
         
         # Déterminer le serveur IMAP selon le domaine
         email_domain = persona_email.split('@')[1].lower()
@@ -625,6 +712,22 @@ def api_test_email_connection(persona_email):
                 # Essayer avec le format standard
                 imap_server = f'imap.{email_domain}'
         
+        # Déterminer d'où vient le mot de passe utilisé (pour le diagnostic)
+        password_source = "direct"
+        if persona.get('alias'):
+            if email_domain in ['gmx.com', 'gmx.fr']:
+                parent_email = persona.get('parent')
+                if parent_email:
+                    parent_domain = parent_email.split('@')[1].lower() if '@' in parent_email else ''
+                    if parent_domain in ['gmx.com', 'gmx.fr']:
+                        password_source = f"parent GMX ({parent_email})"
+                    else:
+                        password_source = "persona principal GMX (recherche automatique)"
+            else:
+                password_source = f"parent ({persona.get('parent', 'N/A')})"
+        
+        logger.info(f"Test connexion pour {persona_email} - Mot de passe depuis: {password_source}")
+        
         # Tester la connexion
         try:
             # Essayer avec SSL d'abord
@@ -657,19 +760,85 @@ def api_test_email_connection(persona_email):
         except imaplib.IMAP4.error as e:
             error_msg = str(e)
             logger.error(f"Erreur IMAP pour {persona_email} sur {imap_server}: {error_msg}")
-            if 'authentication failed' in error_msg.lower() or 'invalid credentials' in error_msg.lower():
+            
+            # Déterminer d'où vient le mot de passe utilisé
+            password_source = "direct"
+            if persona.get('alias'):
+                if email_domain in ['gmx.com', 'gmx.fr']:
+                    parent_email = persona.get('parent')
+                    if parent_email:
+                        parent_domain = parent_email.split('@')[1].lower() if '@' in parent_email else ''
+                        if parent_domain in ['gmx.com', 'gmx.fr']:
+                            password_source = f"parent GMX ({parent_email})"
+                        else:
+                            password_source = "persona principal GMX (recherche automatique)"
+                else:
+                    password_source = f"parent ({persona.get('parent', 'N/A')})"
+            
+            # Messages d'erreur plus détaillés
+            if 'authentication failed' in error_msg.lower() or 'invalid credentials' in error_msg.lower() or 'login failed' in error_msg.lower():
+                detailed_error = 'Identifiants incorrects. '
+                if persona.get('alias'):
+                    if email_domain in ['gmx.com', 'gmx.fr', 'caramail.com', 'caramail.fr']:
+                        detailed_error += f'Pour les alias GMX/CaraMail, le mot de passe utilisé vient de: {password_source}. '
+                        detailed_error += 'Vérifiez que le mot de passe du compte principal est correct dans personas.json. '
+                    else:
+                        detailed_error += f'Le mot de passe utilisé vient du parent ({persona.get("parent", "N/A")}). '
+                        detailed_error += 'Vérifiez que le mot de passe du parent est correct. '
+                else:
+                    detailed_error += 'Le mot de passe configuré directement dans personas.json est incorrect. '
+                    detailed_error += 'Vérifiez que le mot de passe est correct et que les caractères spéciaux sont bien encodés. '
+                
+                detailed_error += f'\n\nServeur utilisé: {imap_server}:{imap_port}'
+                
+                # Ajouter un avertissement spécial pour GMX/CaraMail
+                if email_domain in ['gmx.com', 'gmx.fr', 'caramail.com', 'caramail.fr']:
+                    detailed_error += '\n\n⚠️ IMPORTANT - GMX/CaraMail: '
+                    detailed_error += 'Les protocoles IMAP/POP3/SMTP sont DÉSACTIVÉS par défaut pour des raisons de sécurité. '
+                    detailed_error += 'Vous devez les activer manuellement dans les paramètres de votre boîte mail. '
+                    detailed_error += '\n\n📋 Instructions pour activer IMAP: '
+                    detailed_error += '\n1. Connectez-vous à https://www.gmx.fr ou https://www.caramail.com'
+                    detailed_error += '\n2. Allez dans Paramètres / Réglages de votre boîte mail'
+                    detailed_error += '\n3. Cherchez "Accès par programme" ou "IMAP/POP3" ou "Paramètres de messagerie"'
+                    detailed_error += '\n4. Activez l\'accès IMAP et SMTP'
+                    detailed_error += '\n5. Réessayez la connexion'
+                    detailed_error += '\n\n💡 Note: GMX envoie un email de confirmation quand vous activez IMAP.'
+                
                 return jsonify({
                     'success': False, 
-                    'error': 'Identifiants incorrects. Vérifiez le mot de passe.',
+                    'error': detailed_error,
                     'server': imap_server,
-                    'port': imap_port
+                    'port': imap_port,
+                    'persona_email': persona_email,
+                    'is_alias': persona.get('alias', False),
+                    'parent': persona.get('parent'),
+                    'password_source': password_source,
+                    'hint': 'Le mot de passe peut avoir changé ou être incorrect. Utilisez le bouton "Mettre à jour mot de passe" pour le corriger.'
                 }), 401
-            elif 'login' in error_msg.lower():
+            elif 'login' in error_msg.lower() or 'auth' in error_msg.lower():
+                detailed_error = f'Erreur d\'authentification: {error_msg}. '
+                if email_domain in ['gmx.com', 'gmx.fr', 'caramail.com', 'caramail.fr']:
+                    detailed_error += '\n\n⚠️ IMPORTANT pour GMX/CaraMail: '
+                    detailed_error += 'Les protocoles IMAP/POP3/SMTP sont désactivés par défaut pour des raisons de sécurité. '
+                    detailed_error += 'Vous devez les activer manuellement dans les paramètres de votre boîte mail GMX/CaraMail. '
+                    detailed_error += '\n\n📋 Instructions: '
+                    detailed_error += '\n1. Connectez-vous à votre boîte mail GMX/CaraMail via le site web'
+                    detailed_error += '\n2. Allez dans Paramètres / Réglages'
+                    detailed_error += '\n3. Activez l\'accès IMAP/POP3/SMTP'
+                    detailed_error += '\n4. Réessayez la connexion'
+                else:
+                    detailed_error += 'Vérifiez que l\'accès IMAP est activé pour ce compte et que le mot de passe est correct.'
+                
                 return jsonify({
                     'success': False, 
-                    'error': f'Erreur d\'authentification: {error_msg}. Vérifiez que l\'accès IMAP est activé pour ce compte.',
+                    'error': detailed_error,
                     'server': imap_server,
-                    'port': imap_port
+                    'port': imap_port,
+                    'persona_email': persona_email,
+                    'is_alias': persona.get('alias', False),
+                    'parent': persona.get('parent'),
+                    'password_source': password_source,
+                    'requires_imap_activation': email_domain in ['gmx.com', 'gmx.fr', 'caramail.com', 'caramail.fr']
                 }), 401
             else:
                 return jsonify({
@@ -677,6 +846,7 @@ def api_test_email_connection(persona_email):
                     'error': f'Erreur IMAP: {error_msg}',
                     'server': imap_server,
                     'port': imap_port,
+                    'persona_email': persona_email,
                     'hint': 'Vérifiez que le serveur IMAP est correct et que l\'accès IMAP est activé pour ce compte.'
                 }), 500
         except socket.gaierror as e:
@@ -699,6 +869,269 @@ def api_test_email_connection(persona_email):
     except Exception as e:
         logger.error(f"Erreur test connexion email pour {persona_email}: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/personas/<path:persona_email>/password', methods=['PUT'])
+def api_update_persona_password(persona_email):
+    """Met à jour le mot de passe d'un persona."""
+    from urllib.parse import unquote
+    
+    persona_email = unquote(persona_email)
+    data = request.json
+    password = data.get('password')
+    
+    if not password:
+        return jsonify({'success': False, 'error': 'Mot de passe requis'}), 400
+    
+    try:
+        persona = persona_manager.get_persona_by_email(persona_email)
+        if not persona:
+            return jsonify({'success': False, 'error': 'Persona non trouvé'}), 404
+        
+        # Trouver la clé du persona
+        persona_key = None
+        for key, p in persona_manager.get_all_personas().items():
+            if p.get('email') == persona_email:
+                persona_key = key
+                break
+        
+        if not persona_key:
+            return jsonify({'success': False, 'error': 'Clé du persona non trouvée'}), 404
+        
+        # Mettre à jour le mot de passe
+        success = persona_manager.update_persona(persona_key, password=password)
+        
+        if success:
+            log_message(f"Mot de passe mis à jour pour {persona_email}", "success")
+            return jsonify({'success': True, 'message': 'Mot de passe mis à jour avec succès'})
+        else:
+            return jsonify({'success': False, 'error': 'Erreur lors de la mise à jour'}), 500
+            
+    except Exception as e:
+        logger.error(f"Erreur mise à jour mot de passe pour {persona_email}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/personas/test-all-email-connections', methods=['POST'])
+def api_test_all_email_connections():
+    """Teste la connexion email pour tous les personas."""
+    import imaplib
+    import socket
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import time
+    
+    try:
+        # Charger tous les personas
+        all_personas = persona_manager.get_all_personas()
+        results = []
+        
+        def test_single_persona(persona_key, persona):
+            """Teste la connexion email pour un seul persona."""
+            email = persona.get('email')
+            if not email:
+                return {
+                    'persona_key': persona_key,
+                    'name': persona.get('name', 'N/A'),
+                    'email': email or 'N/A',
+                    'success': False,
+                    'error': 'Email non configuré',
+                    'is_alias': persona.get('alias', False),
+                    'parent': persona.get('parent')
+                }
+            
+            # Récupérer le mot de passe (si alias, récupérer depuis le parent)
+            password = persona.get('password')
+            if not password and persona.get('alias') and persona.get('parent'):
+                parent_persona = persona_manager.get_persona_by_email(persona.get('parent'))
+                if parent_persona:
+                    password = parent_persona.get('password')
+            
+            if not password:
+                return {
+                    'persona_key': persona_key,
+                    'name': persona.get('name', 'N/A'),
+                    'email': email,
+                    'success': False,
+                    'error': 'Mot de passe non configuré (ni pour le persona ni pour son parent)',
+                    'is_alias': persona.get('alias', False),
+                    'parent': persona.get('parent'),
+                    'server': None,
+                    'port': None
+                }
+            
+            # Déterminer le serveur IMAP
+            email_domain = email.split('@')[1].lower()
+            
+            # Vérifier si le persona a une configuration email personnalisée
+            email_config = persona.get('email_config', {})
+            imap_server = email_config.get('imap_server')
+            imap_port = email_config.get('imap_port', 993)
+            
+            if not imap_server:
+                # Utiliser la liste par défaut des serveurs IMAP
+                imap_servers = {
+                    'gmx.com': 'imap.gmx.com',
+                    'gmx.fr': 'imap.gmx.com',
+                    'gmail.com': 'imap.gmail.com',
+                    'outlook.com': 'outlook.office365.com',
+                    'hotmail.com': 'outlook.office365.com',
+                    'live.com': 'outlook.office365.com',
+                    'yahoo.com': 'imap.mail.yahoo.com',
+                    'yahoo.fr': 'imap.mail.yahoo.com',
+                    'caramail.com': 'imap.caramail.com',
+                    'caramail.fr': 'imap.caramail.com',
+                    'orange.fr': 'imap.orange.fr',
+                    'wanadoo.fr': 'imap.orange.fr',
+                    'free.fr': 'imap.free.fr',
+                    'laposte.net': 'imap.laposte.net',
+                    'sfr.fr': 'imap.sfr.fr',
+                    'numericable.fr': 'imap.numericable.fr'
+                }
+                
+                imap_server = imap_servers.get(email_domain)
+                if not imap_server:
+                    # Essayer avec le format standard
+                    imap_server = f'imap.{email_domain}'
+            
+            # Tester la connexion
+            start_time = time.time()
+            try:
+                # Essayer avec SSL d'abord
+                try:
+                    mail = imaplib.IMAP4_SSL(imap_server, imap_port)
+                except Exception as ssl_error:
+                    # Si SSL échoue, essayer sans SSL (port 143)
+                    try:
+                        mail = imaplib.IMAP4(imap_server, 143)
+                        imap_port = 143
+                    except Exception as e:
+                        return {
+                            'persona_key': persona_key,
+                            'name': persona.get('name', 'N/A'),
+                            'email': email,
+                            'success': False,
+                            'error': f'Impossible de se connecter au serveur {imap_server}: {str(e)}',
+                            'is_alias': persona.get('alias', False),
+                            'parent': persona.get('parent'),
+                            'server': imap_server,
+                            'port': imap_port,
+                            'response_time': round((time.time() - start_time) * 1000, 2)
+                        }
+                
+                mail.login(email, password)
+                mail.select('inbox')
+                mail.close()
+                mail.logout()
+                
+                response_time = round((time.time() - start_time) * 1000, 2)
+                
+                return {
+                    'persona_key': persona_key,
+                    'name': persona.get('name', 'N/A'),
+                    'email': email,
+                    'success': True,
+                    'message': f'Connexion réussie',
+                    'is_alias': persona.get('alias', False),
+                    'parent': persona.get('parent'),
+                    'server': imap_server,
+                    'port': imap_port,
+                    'response_time': response_time
+                }
+            except imaplib.IMAP4.error as e:
+                error_msg = str(e)
+                response_time = round((time.time() - start_time) * 1000, 2)
+                
+                if 'authentication failed' in error_msg.lower() or 'invalid credentials' in error_msg.lower():
+                    error = 'Identifiants incorrects. Vérifiez le mot de passe.'
+                elif 'login' in error_msg.lower():
+                    error = f'Erreur d\'authentification: {error_msg}. Vérifiez que l\'accès IMAP est activé.'
+                else:
+                    error = f'Erreur IMAP: {error_msg}'
+                
+                return {
+                    'persona_key': persona_key,
+                    'name': persona.get('name', 'N/A'),
+                    'email': email,
+                    'success': False,
+                    'error': error,
+                    'is_alias': persona.get('alias', False),
+                    'parent': persona.get('parent'),
+                    'server': imap_server,
+                    'port': imap_port,
+                    'response_time': response_time
+                }
+            except socket.gaierror as e:
+                response_time = round((time.time() - start_time) * 1000, 2)
+                return {
+                    'persona_key': persona_key,
+                    'name': persona.get('name', 'N/A'),
+                    'email': email,
+                    'success': False,
+                    'error': f'Impossible de résoudre le nom du serveur {imap_server}',
+                    'is_alias': persona.get('alias', False),
+                    'parent': persona.get('parent'),
+                    'server': imap_server,
+                    'port': imap_port,
+                    'response_time': response_time
+                }
+            except Exception as e:
+                response_time = round((time.time() - start_time) * 1000, 2)
+                return {
+                    'persona_key': persona_key,
+                    'name': persona.get('name', 'N/A'),
+                    'email': email,
+                    'success': False,
+                    'error': f'Erreur inattendue: {str(e)}',
+                    'is_alias': persona.get('alias', False),
+                    'parent': persona.get('parent'),
+                    'server': imap_server,
+                    'port': imap_port,
+                    'response_time': response_time
+                }
+        
+        # Tester tous les personas en parallèle (max 10 simultanés pour éviter la surcharge)
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {
+                executor.submit(test_single_persona, key, persona): (key, persona)
+                for key, persona in all_personas.items()
+            }
+            
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    results.append(result)
+                except Exception as e:
+                    key, persona = futures[future]
+                    results.append({
+                        'persona_key': key,
+                        'name': persona.get('name', 'N/A'),
+                        'email': persona.get('email', 'N/A'),
+                        'success': False,
+                        'error': f'Erreur lors du test: {str(e)}',
+                        'is_alias': persona.get('alias', False),
+                        'parent': persona.get('parent')
+                    })
+        
+        # Trier les résultats : succès d'abord, puis échecs
+        results.sort(key=lambda x: (not x.get('success', False), x.get('name', '')))
+        
+        # Calculer les statistiques
+        total = len(results)
+        successful = sum(1 for r in results if r.get('success', False))
+        failed = total - successful
+        
+        return jsonify({
+            'success': True,
+            'total': total,
+            'successful': successful,
+            'failed': failed,
+            'results': results
+        })
+        
+    except Exception as e:
+        logger.error(f"Erreur test connexions email pour tous les personas: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/api/personas/test-email-send', methods=['POST'])
 def api_test_email_send():
@@ -728,10 +1161,19 @@ def api_test_email_send():
         if not to_persona:
             return jsonify({'success': False, 'error': f'Persona destinataire non trouvé: {to_email}'}), 404
         
-        # Récupérer le mot de passe de l'expéditeur
+        # Récupérer le mot de passe de l'expéditeur (si alias, récupérer depuis le parent)
         password = from_persona.get('password')
+        if not password and from_persona.get('alias') and from_persona.get('parent'):
+            # Si c'est un alias sans mot de passe, récupérer le mot de passe du parent
+            parent_persona = persona_manager.get_persona_by_email(from_persona.get('parent'))
+            if parent_persona:
+                password = parent_persona.get('password')
+        
         if not password:
-            return jsonify({'success': False, 'error': 'Mot de passe non configuré pour le persona expéditeur'}), 400
+            return jsonify({
+                'success': False, 
+                'error': 'Mot de passe non configuré pour le persona expéditeur. Vérifiez que le persona ou son parent a un mot de passe configuré dans personas.json.'
+            }), 400
         
         # Déterminer le serveur SMTP
         email_domain = from_email.split('@')[1].lower()
@@ -846,9 +1288,87 @@ def api_fetch_emails_from_imap(persona_email):
         if not persona:
             return jsonify({'success': False, 'error': 'Persona non trouvé'}), 404
         
+        # Récupérer le mot de passe
+        # Pour les alias GMX, utiliser le mot de passe du persona lui-même ou chercher un persona principal GMX
         password = persona.get('password')
+        email_domain = persona_email.split('@')[1].lower()
+        
+        if not password and persona.get('alias'):
+            # Si c'est un alias sans mot de passe
+            parent_email = persona.get('parent')
+            
+            # Pour GMX, les alias utilisent le mot de passe du compte principal GMX
+            if email_domain in ['gmx.com', 'gmx.fr'] and parent_email:
+                parent_domain = parent_email.split('@')[1].lower() if '@' in parent_email else ''
+                # Si le parent est aussi GMX, utiliser son mot de passe (même s'il est alias, on remonte jusqu'à trouver un mot de passe)
+                if parent_domain in ['gmx.com', 'gmx.fr']:
+                    # Le parent est aussi GMX, utiliser son mot de passe
+                    parent_persona = persona_manager.get_persona_by_email(parent_email)
+                    if parent_persona:
+                        parent_password = parent_persona.get('password')
+                        # Si le parent n'a pas de mot de passe mais est aussi un alias, remonter la chaîne
+                        if not parent_password and parent_persona.get('alias') and parent_persona.get('parent'):
+                            # Remonter jusqu'à trouver un mot de passe GMX
+                            current_parent = parent_persona.get('parent')
+                            max_depth = 10  # Limite de profondeur pour éviter les boucles infinies
+                            depth = 0
+                            while current_parent and depth < max_depth:
+                                current_parent_persona = persona_manager.get_persona_by_email(current_parent)
+                                if current_parent_persona:
+                                    current_parent_password = current_parent_persona.get('password')
+                                    if current_parent_password:
+                                        password = current_parent_password
+                                        logger.info(f"Utilisation du mot de passe du persona GMX {current_parent} (remontée de chaîne) pour l'alias {persona_email}")
+                                        break
+                                    # Continuer à remonter si pas de mot de passe
+                                    if current_parent_persona.get('alias') and current_parent_persona.get('parent'):
+                                        current_parent = current_parent_persona.get('parent')
+                                    else:
+                                        break
+                                else:
+                                    break
+                                depth += 1
+                        elif parent_password:
+                            password = parent_password
+                else:
+                    # Le parent est sur un autre domaine (ex: caramail), chercher un persona principal GMX
+                    # Chercher un persona principal GMX avec un mot de passe
+                    all_personas = persona_manager.get_all_personas()
+                    # Prioriser les personas qui ont un nom similaire ou qui sont souvent utilisés
+                    gmx_principals = []
+                    for p in all_personas.values():
+                        if (not p.get('alias', False) and 
+                            p.get('email', '').split('@')[1].lower() in ['gmx.com', 'gmx.fr'] and 
+                            p.get('password')):
+                            gmx_principals.append(p)
+                    
+                    if gmx_principals:
+                        # Prendre le premier persona principal GMX trouvé
+                        # TODO: Pourrait être amélioré pour permettre de spécifier quel persona utiliser
+                        password = gmx_principals[0].get('password')
+                        logger.info(f"Utilisation du mot de passe du persona principal GMX {gmx_principals[0].get('email')} pour l'alias {persona_email}")
+            else:
+                # Pour les autres domaines, utiliser le mot de passe du parent
+                if parent_email:
+                    parent_persona = persona_manager.get_persona_by_email(parent_email)
+                    if parent_persona:
+                        password = parent_persona.get('password')
+        
         if not password:
-            return jsonify({'success': False, 'error': 'Mot de passe non configuré'}), 400
+            error_msg = 'Mot de passe non configuré.'
+            if persona.get('alias'):
+                if email_domain in ['gmx.com', 'gmx.fr']:
+                    error_msg += ' Pour les alias GMX, vous devez configurer le mot de passe du compte principal GMX dans personas.json.'
+                else:
+                    error_msg += f' Vérifiez que le persona ou son parent ({persona.get("parent", "N/A")}) a un mot de passe configuré.'
+            else:
+                error_msg += ' Ajoutez le mot de passe dans personas.json ou utilisez l\'interface pour le mettre à jour.'
+            
+            return jsonify({
+                'success': False, 
+                'error': error_msg,
+                'hint': 'Vous pouvez mettre à jour le mot de passe via l\'API PUT /api/personas/<email>/password'
+            }), 400
         
         # Déterminer le serveur IMAP
         email_domain = persona_email.split('@')[1].lower()
@@ -960,10 +1480,51 @@ def api_fetch_emails_from_imap(persona_email):
         
     except imaplib.IMAP4.error as e:
         error_msg = str(e)
-        if 'authentication failed' in error_msg.lower():
-            return jsonify({'success': False, 'error': 'Identifiants incorrects'}), 401
+        logger.error(f"Erreur IMAP pour {persona_email} sur {imap_server}: {error_msg}")
+        
+        # Déterminer d'où vient le mot de passe utilisé
+        password_source = "direct"
+        if persona.get('alias'):
+            if email_domain in ['gmx.com', 'gmx.fr']:
+                parent_email = persona.get('parent')
+                if parent_email:
+                    parent_domain = parent_email.split('@')[1].lower() if '@' in parent_email else ''
+                    if parent_domain in ['gmx.com', 'gmx.fr']:
+                        password_source = f"parent GMX ({parent_email})"
+                    else:
+                        password_source = "persona principal GMX (recherche automatique)"
+            else:
+                password_source = f"parent ({persona.get('parent', 'N/A')})"
+        
+        if 'authentication failed' in error_msg.lower() or 'invalid credentials' in error_msg.lower():
+            detailed_error = 'Identifiants incorrects. '
+            if persona.get('alias'):
+                if email_domain in ['gmx.com', 'gmx.fr']:
+                    detailed_error += f'Le mot de passe utilisé vient de: {password_source}. '
+                    detailed_error += 'Vérifiez que le mot de passe du compte principal GMX est correct. '
+                else:
+                    detailed_error += f'Le mot de passe utilisé vient du parent ({persona.get("parent", "N/A")}). '
+                    detailed_error += 'Vérifiez que le mot de passe du parent est correct. '
+            else:
+                detailed_error += 'Le mot de passe configuré directement dans personas.json est incorrect. '
+                detailed_error += 'Vérifiez que le mot de passe est correct et que les caractères spéciaux sont bien encodés. '
+            
+            return jsonify({
+                'success': False, 
+                'error': detailed_error,
+                'server': imap_server,
+                'port': imap_port,
+                'password_source': password_source,
+                'hint': 'Le mot de passe peut avoir changé. Utilisez le bouton "Mettre à jour mot de passe" pour le corriger.'
+            }), 401
         else:
-            return jsonify({'success': False, 'error': f'Erreur IMAP: {error_msg}'}), 500
+            return jsonify({
+                'success': False, 
+                'error': f'Erreur IMAP: {error_msg}',
+                'server': imap_server,
+                'port': imap_port,
+                'password_source': password_source
+            }), 500
     except Exception as e:
         logger.error(f"Erreur récupération emails IMAP pour {persona_email}: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500

@@ -8,107 +8,31 @@
 
 {% block content %}
 <div class="card">
-    <div class="searches-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
-        <h2 style="margin: 0;">🔍 Gestion des Recherches</h2>
+    <div class="searches-header">
+        <h2>🔍 Gestion des Recherches</h2>
         <button class="btn btn-primary" onclick="showCreateSearchModal()">➕ Créer une recherche</button>
     </div>
     
-    <div class="searches-filter-buttons" style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 25px; padding: 20px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%); border-radius: 12px; border: 2px solid var(--border-color);">
-        <button class="btn" onclick="loadAllSearches()" style="
-            background: linear-gradient(135deg, var(--text-title) 0%, #5b21b6 100%);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 0.95em;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-            transition: all 0.3s ease;
-            border: none;
-        " onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'" 
-           onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)'">
+    <div class="searches-filter-container">
+        <button class="filter-btn filter-btn-primary" onclick="loadAllSearches()">
             📋 Toutes les recherches
         </button>
-        <button class="btn" onclick="loadEnabledSearches()" style="
-            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 0.95em;
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-            transition: all 0.3s ease;
-            border: none;
-        " onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.4)'" 
-           onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(16, 185, 129, 0.3)'">
+        <button class="filter-btn filter-btn-success" onclick="loadEnabledSearches()">
             ✅ Recherches activées
         </button>
-        <button class="btn" onclick="selectAllSearches()" style="
-            background: linear-gradient(135deg, var(--info) 0%, #2563eb 100%);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 0.95em;
-            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-            transition: all 0.3s ease;
-            border: none;
-        " onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.4)'" 
-           onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(59, 130, 246, 0.3)'">
+        <button class="filter-btn filter-btn-info" onclick="selectAllSearches()">
             ✅ Sélectionner tout
         </button>
-        <button class="btn" onclick="deselectAllSearches()" style="
-            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 0.95em;
-            box-shadow: 0 2px 8px rgba(107, 114, 128, 0.3);
-            transition: all 0.3s ease;
-            border: none;
-        " onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(107, 114, 128, 0.4)'" 
-           onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(107, 114, 128, 0.3)'">
+        <button class="filter-btn filter-btn-gray" onclick="deselectAllSearches()">
             ❌ Désélectionner tout
         </button>
-        <button class="btn" onclick="toggleAllSearchesEnabled()" style="
-            background: linear-gradient(135deg, var(--warning) 0%, #d97706 100%);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 0.95em;
-            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
-            transition: all 0.3s ease;
-            border: none;
-        " onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(245, 158, 11, 0.4)'" 
-           onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(245, 158, 11, 0.3)'">
+        <button class="filter-btn filter-btn-warning" onclick="toggleAllSearchesEnabled()">
             🔄 Activer/Désactiver sélectionnées
         </button>
-        <button class="btn btn-success" onclick="showRunMultipleModal()" style="
-            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 0.95em;
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-            transition: all 0.3s ease;
-            border: none;
-        " onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.4)'" 
-           onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(16, 185, 129, 0.3)'">
+        <button class="filter-btn filter-btn-success" onclick="showRunMultipleModal()">
             🚀 Lancer plusieurs recherches
         </button>
-        <span id="selectedSearchesCount" style="
-            color: var(--text-title);
-            font-weight: 700;
-            padding: 12px 20px;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-            border-radius: 10px;
-            border: 2px solid var(--text-title);
-            margin-left: auto;
-            font-size: 0.95em;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
-        ">
+        <span id="selectedSearchesCount" class="selected-count">
             0 sélectionnée(s)
         </span>
     </div>

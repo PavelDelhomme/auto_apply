@@ -28,8 +28,16 @@ ENV/
 *~
 
 # Fichiers de configuration sensibles (personas avec mots de passe)
-# Décommentez si vous ne voulez pas committer personas.json
-# personas.json
+config/personas.json
+config/ovh_config.json
+
+# Rapports contenant des informations sensibles
+EMAIL_STATUS_REPORT.md
+
+# Scripts avec informations sensibles
+scripts/test_key_personas.py
+scripts/update_key_personas_passwords.py
+scripts/verify_key_personas.py
 
 # Logs
 *.log

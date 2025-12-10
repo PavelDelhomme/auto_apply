@@ -215,63 +215,28 @@ function renderActiveSearches() {
         `;
     }
     
-    // Ajouter la pagination avec le même style que les boutons de filtrage (sur une seule ligne)
+    // Ajouter la pagination avec layout amélioré : Précédent (gauche) | Info (centre) | Suivant (droite), nombre total en dessous
     if (totalPages > 1) {
         html += `
-            <div class="pagination-container" style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 15px; padding: 15px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%); border-radius: 12px; border: 2px solid var(--border-color); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2); flex-wrap: wrap;">
-                <button class="pagination-btn" onclick="changeActiveSearchesPage(${activeSearchesPage - 1})" ${activeSearchesPage === 1 ? 'disabled' : ''} style="
-                    background: linear-gradient(135deg, var(--text-title) 0%, #5b21b6 100%);
-                    color: white;
-                    padding: 12px 20px;
-                    border-radius: 10px;
-                    font-weight: 600;
-                    font-size: 0.95em;
-                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-                    transition: all 0.3s ease;
-                    border: none;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                " onmouseenter="if (!this.disabled) { this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'; }" 
-                   onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)';"
-                   ${activeSearchesPage === 1 ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>
-                    <span>←</span>
-                    <span>Précédent</span>
-                </button>
-                <span class="pagination-info" style="
-                    color: var(--text-title);
-                    font-weight: 700;
-                    padding: 12px 20px;
-                    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-                    border-radius: 10px;
-                    border: 2px solid var(--text-title);
-                    font-size: 0.95em;
-                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
-                    white-space: nowrap;
-                ">
-                    Page <strong>${activeSearchesPage}</strong> sur <strong>${totalPages}</strong> (${totalItems} recherche${totalItems > 1 ? 's' : ''})
-                </span>
-                <button class="pagination-btn" onclick="changeActiveSearchesPage(${activeSearchesPage + 1})" ${activeSearchesPage === totalPages ? 'disabled' : ''} style="
-                    background: linear-gradient(135deg, var(--text-title) 0%, #5b21b6 100%);
-                    color: white;
-                    padding: 12px 20px;
-                    border-radius: 10px;
-                    font-weight: 600;
-                    font-size: 0.95em;
-                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-                    transition: all 0.3s ease;
-                    border: none;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                " onmouseenter="if (!this.disabled) { this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'; }" 
-                   onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)';"
-                   ${activeSearchesPage === totalPages ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>
-                    <span>Suivant</span>
-                    <span>→</span>
-                </button>
+            <div class="pagination-container-dashboard">
+                <div class="pagination-row">
+                    <button class="pagination-btn-nav pagination-btn-prev" onclick="changeActiveSearchesPage(${activeSearchesPage - 1})" ${activeSearchesPage === 1 ? 'disabled' : ''}>
+                        <span class="pagination-icon">←</span>
+                        <span class="pagination-text">Précédent</span>
+                    </button>
+                    <div class="pagination-info-center">
+                        <div class="pagination-page-info">
+                            Page <strong>${activeSearchesPage}</strong> sur <strong>${totalPages}</strong>
+                        </div>
+                    </div>
+                    <button class="pagination-btn-nav pagination-btn-next" onclick="changeActiveSearchesPage(${activeSearchesPage + 1})" ${activeSearchesPage === totalPages ? 'disabled' : ''}>
+                        <span class="pagination-text">Suivant</span>
+                        <span class="pagination-icon">→</span>
+                    </button>
+                </div>
+                <div class="pagination-count">
+                    ${totalItems} recherche${totalItems > 1 ? 's' : ''}
+                </div>
             </div>
         `;
     }
@@ -425,7 +390,8 @@ function showSearchDetailsModal(search, searchKey) {
     });
 }
 
-function changeActiveSearchesPage(page) {
+// Exporter la fonction globalement pour qu'elle soit accessible depuis onclick
+window.changeActiveSearchesPage = function(page) {
     const totalPages = Math.ceil(Object.keys(allActiveSearches).length / activeSearchesPerPage);
     if (page < 1 || page > totalPages) return;
     
@@ -451,7 +417,7 @@ function changeActiveSearchesPage(page) {
             }
         }
     }, 100);
-}
+};
 
 // Variables pour la pagination des logs
 let logsPage = 1;
@@ -513,63 +479,28 @@ function renderLogs() {
         `;
     }
     
-    // Ajouter la pagination avec le même style que les boutons de filtrage (sur une seule ligne)
+    // Ajouter la pagination avec layout amélioré : Précédent (gauche) | Info (centre) | Suivant (droite), nombre total en dessous
     if (totalPages > 1) {
         html += `
-            <div style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 15px; padding: 15px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%); border-radius: 12px; border: 2px solid var(--border-color); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2); flex-wrap: wrap;">
-                <button class="btn" onclick="changeLogsPage(${logsPage - 1})" ${logsPage === 1 ? 'disabled' : ''} style="
-                    background: linear-gradient(135deg, var(--text-title) 0%, #5b21b6 100%);
-                    color: white;
-                    padding: 12px 20px;
-                    border-radius: 10px;
-                    font-weight: 600;
-                    font-size: 0.95em;
-                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-                    transition: all 0.3s ease;
-                    border: none;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                " onmouseenter="if (!this.disabled) { this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'; }" 
-                   onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)';"
-                   ${logsPage === 1 ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>
-                    <span>←</span>
-                    <span>Précédent</span>
-                </button>
-                <span style="
-                    color: var(--text-title);
-                    font-weight: 700;
-                    padding: 12px 20px;
-                    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-                    border-radius: 10px;
-                    border: 2px solid var(--text-title);
-                    font-size: 0.95em;
-                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
-                    white-space: nowrap;
-                ">
-                    Page <strong>${logsPage}</strong> sur <strong>${totalPages}</strong> (${totalItems} log${totalItems !== 1 ? 's' : ''})
-                </span>
-                <button class="btn" onclick="changeLogsPage(${logsPage + 1})" ${logsPage === totalPages ? 'disabled' : ''} style="
-                    background: linear-gradient(135deg, var(--text-title) 0%, #5b21b6 100%);
-                    color: white;
-                    padding: 12px 20px;
-                    border-radius: 10px;
-                    font-weight: 600;
-                    font-size: 0.95em;
-                    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-                    transition: all 0.3s ease;
-                    border: none;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                " onmouseenter="if (!this.disabled) { this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'; }" 
-                   onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)';"
-                   ${logsPage === totalPages ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>
-                    <span>Suivant</span>
-                    <span>→</span>
-                </button>
+            <div class="pagination-container-dashboard">
+                <div class="pagination-row">
+                    <button class="pagination-btn-nav pagination-btn-prev" onclick="changeLogsPage(${logsPage - 1})" ${logsPage === 1 ? 'disabled' : ''}>
+                        <span class="pagination-icon">←</span>
+                        <span class="pagination-text">Précédent</span>
+                    </button>
+                    <div class="pagination-info-center">
+                        <div class="pagination-page-info">
+                            Page <strong>${logsPage}</strong> sur <strong>${totalPages}</strong>
+                        </div>
+                    </div>
+                    <button class="pagination-btn-nav pagination-btn-next" onclick="changeLogsPage(${logsPage + 1})" ${logsPage === totalPages ? 'disabled' : ''}>
+                        <span class="pagination-text">Suivant</span>
+                        <span class="pagination-icon">→</span>
+                    </button>
+                </div>
+                <div class="pagination-count">
+                    ${totalItems} log${totalItems !== 1 ? 's' : ''}
+                </div>
             </div>
         `;
     }
@@ -577,7 +508,8 @@ function renderLogs() {
     logsContainer.innerHTML = html;
 }
 
-function changeLogsPage(page) {
+// Exporter la fonction globalement pour qu'elle soit accessible depuis onclick
+window.changeLogsPage = function(page) {
     const totalPages = Math.ceil(allLogs.length / logsPerPage);
     if (page < 1 || page > totalPages) return;
     
@@ -600,7 +532,7 @@ function changeLogsPage(page) {
             }
         }
     }, 100);
-}
+};
 
 // Mettre à jour les statistiques
 function updateStats(stats) {

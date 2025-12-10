@@ -1,0 +1,8 @@
+{
+    "application_key": "VOTRE_APPLICATION_KEY",
+    "application_secret": "VOTRE_APPLICATION_SECRET",
+    "consumer_key": "VOTRE_CONSUMER_KEY",
+    "domain": "maily.ovh",
+    "endpoint": "ovh-eu"
+}
+

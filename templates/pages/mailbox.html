@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Boîte Mail - Auto Apply{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/css/mailbox.css">
+{% endblock %}
+
+{% block content %}
+<div class="mailbox-container">
+    <!-- Sidebar avec sélection du persona -->
+    <div class="mailbox-sidebar">
+        <div class="mailbox-sidebar-header">
+            <h2>📧 Boîtes Mail</h2>
+            <button class="btn btn-primary btn-sm" onclick="refreshAllMailboxes()" title="Actualiser toutes les boîtes">
+                🔄
+            </button>
+        </div>
+        
+        <div class="persona-selector">
+            <label for="personaSearchInput">Sélectionner un persona :</label>
+            <div class="persona-search-container">
+                <input 
+                    type="text" 
+                    id="personaSearchInput" 
+                    class="persona-search-input" 
+                    placeholder="Rechercher un persona (nom ou email)..."
+                    autocomplete="off"
+                    oninput="filterPersonasForMailbox(this.value)"
+                    onfocus="showPersonaDropdown()"
+                    onblur="hidePersonaDropdown()"
+                >
+                <div id="personaDropdown" class="persona-dropdown" style="display: none;"></div>
+            </div>
+        </div>
+        
+        <div id="personaInfo" class="persona-info" style="display: none;">
+            <div class="persona-info-header">
+                <h3 id="selectedPersonaName"></h3>
+                <div class="persona-info-email" id="selectedPersonaEmail"></div>
+            </div>
+            <div class="persona-info-stats">
+                <div class="stat-item">
+                    <span class="stat-label">📥 Reçus:</span>
+                    <span class="stat-value" id="emailsReceived">0</span>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">📤 Envoyés:</div>
+                    <div class="stat-value" id="emailsSent">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">📬 Non lus:</div>
+                    <div class="stat-value unread" id="emailsUnread">0</div>
+                </div>
+            </div>
+            <div class="persona-info-actions">
+                <button class="btn btn-primary btn-block" onclick="fetchEmailsFromIMAP()">
+                    📥 Récupérer les emails
+                </button>
+                <button class="btn btn-success btn-block" onclick="showComposeEmailModal()">
+                    ✉️ Nouveau message
+                </button>
+                <button class="btn btn-secondary btn-block" onclick="testEmailConnection()">
+                    🔌 Tester connexion
+                </button>
+                <button class="btn btn-warning btn-block" onclick="showUpdatePasswordModal()">
+                    🔐 Mettre à jour mot de passe
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Zone principale : liste des emails et lecture -->
+    <div class="mailbox-main">
+        <div id="mailboxEmpty" class="mailbox-empty">
+            <div class="empty-icon">📧</div>
+            <h3>Sélectionnez un persona pour voir sa boîte mail</h3>
+            <p>Choisissez un persona dans le menu de gauche pour commencer</p>
+        </div>
+        
+        <div id="mailboxContent" class="mailbox-content" style="display: none;">
+            <!-- Toolbar -->
+            <div class="mailbox-toolbar">
+                <div class="toolbar-left">
+                    <button class="btn btn-icon" onclick="refreshMailbox()" title="Actualiser">
+                        🔄
+                    </button>
+                    <button class="btn btn-icon" onclick="markAllAsRead()" title="Tout marquer comme lu">
+                        ✓
+                    </button>
+                    <div class="toolbar-filter">
+                        <select id="emailFilter" class="filter-select" onchange="filterEmails()">
+                            <option value="all">Tous les emails</option>
+                            <option value="unread">Non lus</option>
+                            <option value="read">Lus</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="toolbar-right">
+                    <input type="search" id="emailSearch" class="search-input" placeholder="Rechercher..." oninput="searchEmails()">
+                </div>
+            </div>
+            
+            <!-- Liste des emails -->
+            <div class="emails-list-container">
+                <div id="emailsList" class="emails-list">
+                    <!-- Les emails seront chargés ici -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour lire un email -->
+<div id="readEmailModal" class="modal">
+    <div class="modal-content email-modal">
+        <div class="modal-header">
+            <h2 id="emailSubject">Sujet de l'email</h2>
+            <button class="modal-close" onclick="closeReadEmailModal()">✕</button>
+        </div>
+        <div class="modal-body email-body">
+            <div class="email-header-info">
+                <div class="email-info-row">
+                    <strong>De:</strong>
+                    <span id="emailFrom"></span>
+                </div>
+                <div class="email-info-row">
+                    <strong>À:</strong>
+                    <span id="emailTo"></span>
+                </div>
+                <div class="email-info-row">
+                    <strong>Date:</strong>
+                    <span id="emailDate"></span>
+                </div>
+            </div>
+            <div class="email-actions">
+                <button class="btn btn-primary" onclick="replyToEmail()">↩️ Répondre</button>
+                <button class="btn btn-success" onclick="forwardEmail()">↪️ Transférer</button>
+                <button class="btn btn-danger" onclick="deleteEmail()">🗑️ Supprimer</button>
+            </div>
+            <div id="emailContent" class="email-content">
+                <!-- Contenu de l'email -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour composer un email -->
+<div id="composeEmailModal" class="modal">
+    <div class="modal-content email-compose-modal">
+        <div class="modal-header">
+            <h2>✉️ Nouveau message</h2>
+            <button class="modal-close" onclick="closeComposeEmailModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <form id="composeEmailForm" onsubmit="sendEmail(event)">
+                <div class="form-group">
+                    <label>De:</label>
+                    <input type="text" id="composeFrom" class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                    <label>À:</label>
+                    <input type="email" id="composeTo" class="form-control" required placeholder="email@example.com">
+                </div>
+                <div class="form-group">
+                    <label>Sujet:</label>
+                    <input type="text" id="composeSubject" class="form-control" required placeholder="Sujet du message">
+                </div>
+                <div class="form-group">
+                    <label>Message:</label>
+                    <textarea id="composeBody" class="form-control" rows="15" required placeholder="Votre message..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">📤 Envoyer</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeComposeEmailModal()">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour mettre à jour le mot de passe -->
+<div id="updatePasswordModal" class="modal">
+    <div class="modal-content email-compose-modal">
+        <div class="modal-header">
+            <h2>🔐 Mettre à jour le mot de passe</h2>
+            <button class="modal-close" onclick="closeUpdatePasswordModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <form id="updatePasswordForm" onsubmit="updatePassword(event)">
+                <div class="form-group">
+                    <label>Persona:</label>
+                    <input type="text" id="updatePasswordEmail" class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Nouveau mot de passe:</label>
+                    <input type="password" id="updatePasswordValue" class="form-control" required placeholder="Entrez le nouveau mot de passe">
+                    <small style="color: var(--text-secondary); margin-top: 5px; display: block;">
+                        💡 Pour les alias GMX, utilisez le mot de passe du compte principal GMX
+                    </small>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeUpdatePasswordModal()">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/mailbox.js"></script>
+{% endblock %}
+

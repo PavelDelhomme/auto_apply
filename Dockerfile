@@ -45,8 +45,9 @@ COPY templates/ /app/templates/
 COPY static/ /app/static/
 COPY config/ /app/config/
 COPY tests/ /app/tests/
-COPY static/ /app/static/
+COPY scripts/ /app/scripts/
 COPY pytest.ini /app/pytest.ini
+COPY .coveragerc /app/.coveragerc
 
 # Créer les dossiers nécessaires avec les bonnes permissions
 RUN mkdir -p /app/cvs /app/data && \

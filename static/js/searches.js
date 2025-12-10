@@ -23,11 +23,11 @@ function showLoader(containerId, message = 'Chargement...') {
     if (!container) return;
     
     container.innerHTML = `
-        <div style="text-align: center; padding: 60px 20px; color: var(--text-secondary); grid-column: 1 / -1;">
-            <div style="font-size: 3em; margin-bottom: 15px; animation: pulse 2s infinite;">⏳</div>
-            <p style="font-size: 1.1em; color: var(--text-primary);">${message}</p>
+        <div class="searches-loading">
+            <div class="loading-icon">⏳</div>
+            <p class="loading-message">${message}</p>
             <div style="margin-top: 20px;">
-                <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid var(--border-color); border-top-color: var(--text-title); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <div class="loading-spinner"></div>
             </div>
         </div>
     `;
@@ -64,11 +64,11 @@ async function loadAllSearches() {
         const container = document.getElementById('searchesList');
         if (container) {
             container.innerHTML = `
-                <div style="text-align: center; padding: 60px 20px; color: var(--error); grid-column: 1 / -1;">
-                    <div style="font-size: 3em; margin-bottom: 15px;">❌</div>
+                <div class="error-container">
+                    <div class="error-icon">❌</div>
                     <h3>Erreur lors du chargement</h3>
                     <p>${error.message}</p>
-                    <button class="btn btn-primary" onclick="loadAllSearches()" style="margin-top: 20px;">🔄 Réessayer</button>
+                    <button class="btn btn-primary error-message" onclick="loadAllSearches()">🔄 Réessayer</button>
                 </div>
             `;
         }
@@ -90,11 +90,11 @@ async function loadEnabledSearches() {
         const container = document.getElementById('searchesList');
         if (container) {
             container.innerHTML = `
-                <div style="text-align: center; padding: 60px 20px; color: var(--error); grid-column: 1 / -1;">
-                    <div style="font-size: 3em; margin-bottom: 15px;">❌</div>
+                <div class="error-container">
+                    <div class="error-icon">❌</div>
                     <h3>Erreur lors du chargement</h3>
                     <p>${error.message}</p>
-                    <button class="btn btn-primary" onclick="loadEnabledSearches()" style="margin-top: 20px;">🔄 Réessayer</button>
+                    <button class="btn btn-primary error-message" onclick="loadEnabledSearches()">🔄 Réessayer</button>
                 </div>
             `;
         }
@@ -113,11 +113,11 @@ function renderSearchesList() {
     
     if (totalItems === 0) {
         container.innerHTML = `
-            <div style="text-align: center; padding: 60px 20px; color: var(--text-secondary); grid-column: 1 / -1;">
-                <div style="font-size: 4em; margin-bottom: 20px;">🔍</div>
-                <h3 style="color: var(--text-primary); margin-bottom: 10px;">Aucune recherche trouvée</h3>
+            <div class="empty-container">
+                <div class="empty-icon">🔍</div>
+                <h3 class="empty-title">Aucune recherche trouvée</h3>
                 <p>Créez votre première recherche pour commencer</p>
-                <button class="btn btn-primary" onclick="showCreateSearchModal()" style="margin-top: 20px;">➕ Créer une recherche</button>
+                <button class="btn btn-primary empty-action" onclick="showCreateSearchModal()">➕ Créer une recherche</button>
             </div>
         `;
         return;
@@ -141,64 +141,21 @@ function renderSearchesList() {
         const gradientColor = isEnabled ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)';
         
         html += `
-            <div class="search-card-ultra-modern ${isSelected ? 'selected' : ''}" style="
-                background: ${isSelected ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)' : 'var(--bg-card)'};
-                border: 2px solid ${isSelected ? 'var(--text-title)' : (isEnabled ? 'rgba(16, 185, 129, 0.3)' : 'var(--border-color)')};
-                border-radius: 16px;
-                padding: 0;
-                margin-bottom: 20px;
-                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-                box-shadow: ${isSelected ? '0 8px 24px rgba(102, 126, 234, 0.25), 0 0 0 1px rgba(102, 126, 234, 0.1)' : '0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04)'};
-                position: relative;
-                overflow: hidden;
-                cursor: pointer;
-            " onmouseenter="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 32px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08)'" 
-               onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='${isSelected ? '0 8px 24px rgba(102, 126, 234, 0.25), 0 0 0 1px rgba(102, 126, 234, 0.1)' : '0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04)'}'">
-                
+            <div class="search-card-ultra-modern ${isSelected ? 'selected' : ''} ${isEnabled ? 'search-card-enabled' : ''}">
                 <!-- Header avec gradient -->
-                <div style="
-                    background: ${gradientColor};
-                    padding: 20px 24px;
-                    color: white;
-                    position: relative;
-                    overflow: hidden;
-                ">
-                    <div style="position: absolute; top: -50%; right: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); pointer-events: none;"></div>
-                    
-                    <div style="display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 1;">
-                        <div style="display: flex; align-items: center; gap: 15px; flex: 1;">
+                <div class="search-card-header ${isEnabled ? 'search-card-header-enabled' : 'search-card-header-disabled'}">
+                    <div class="search-card-header-overlay"></div>
+                    <div class="search-card-header-content">
+                        <div class="search-card-header-left">
                             <input type="checkbox" id="search-${key}" ${isSelected ? 'checked' : ''} 
                                    onchange="event.stopPropagation(); toggleSearch('${key}', ${isSelected})"
-                                   style="width: 22px; height: 22px; cursor: pointer; accent-color: white;"
+                                   class="search-card-checkbox"
                                    onclick="event.stopPropagation();">
-                            
-                            <div style="flex: 1; min-width: 0;">
-                                <h3 style="margin: 0 0 8px 0; color: white; font-size: 1.4em; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                                    ${search.name || 'Sans nom'}
-                                </h3>
-                                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                                    <span style="
-                                        background: rgba(255,255,255,0.25);
-                                        backdrop-filter: blur(10px);
-                                        color: white;
-                                        padding: 6px 14px;
-                                        border-radius: 20px;
-                                        font-size: 0.8em;
-                                        font-weight: 600;
-                                        border: 1px solid rgba(255,255,255,0.3);
-                                    ">${isEnabled ? '✓ Activée' : '✗ Désactivée'}</span>
-                                    ${search.standalone ? `
-                                        <span style="
-                                            background: rgba(255,255,255,0.2);
-                                            backdrop-filter: blur(10px);
-                                            color: white;
-                                            padding: 6px 14px;
-                                            border-radius: 20px;
-                                            font-size: 0.8em;
-                                            font-weight: 600;
-                                            border: 1px solid rgba(255,255,255,0.3);
-                                        ">🔍 Standalone</span>
-                                    ` : ''}
+                            <div class="search-card-title-wrapper">
+                                <h3 class="search-card-title">${search.name || 'Sans nom'}</h3>
+                                <div class="search-card-badges">
+                                    <span class="search-card-badge">${isEnabled ? '✓ Activée' : '✗ Désactivée'}</span>
+                                    ${search.standalone ? `<span class="search-card-badge">🔍 Standalone</span>` : ''}
                                 </div>
                             </div>
                         </div>
@@ -206,64 +163,37 @@ function renderSearchesList() {
                 </div>
                 
                 <!-- Contenu principal -->
-                <div style="padding: 24px;">
+                <div class="search-card-body">
                     <!-- Requête et localisation -->
-                    <div style="margin-bottom: 20px;">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 12px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%); border-radius: 12px; border-left: 4px solid var(--text-title);">
-                            <div style="
-                                width: 40px;
-                                height: 40px;
-                                background: var(--text-title);
-                                border-radius: 10px;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                font-size: 1.2em;
-                                flex-shrink: 0;
-                            ">🔍</div>
-                            <div style="flex: 1; min-width: 0;">
-                                <div style="color: var(--text-secondary); font-size: 0.85em; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Recherche</div>
-                                <div style="color: var(--text-primary); font-size: 1.1em; font-weight: 600;">${search.query || 'N/A'}</div>
+                    <div class="search-card-info-section">
+                        <div class="search-card-info-item search-card-info-item-query">
+                            <div class="search-card-info-icon">🔍</div>
+                            <div class="search-card-info-content">
+                                <div class="search-card-info-label">Recherche</div>
+                                <div class="search-card-info-value">${search.query || 'N/A'}</div>
                             </div>
                         </div>
-                        
-                        <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.08) 100%); border-radius: 12px; border-left: 4px solid var(--success);">
-                            <div style="
-                                width: 40px;
-                                height: 40px;
-                                background: var(--success);
-                                border-radius: 10px;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                font-size: 1.2em;
-                                flex-shrink: 0;
-                            ">📍</div>
-                            <div style="flex: 1; min-width: 0;">
-                                <div style="color: var(--text-secondary); font-size: 0.85em; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Localisation</div>
-                                <div style="color: var(--text-primary); font-size: 1.1em; font-weight: 600;">${search.location || 'N/A'}</div>
+                        <div class="search-card-info-item search-card-info-item-location">
+                            <div class="search-card-info-icon search-card-info-icon-location">📍</div>
+                            <div class="search-card-info-content">
+                                <div class="search-card-info-label">Localisation</div>
+                                <div class="search-card-info-value">${search.location || 'N/A'}</div>
                             </div>
                         </div>
                     </div>
                     
                     <!-- Actions -->
-                    <div style="
-                        display: grid;
-                        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-                        gap: 10px;
-                        padding-top: 20px;
-                        border-top: 2px solid var(--border-color);
-                    ">
-                        <button onclick="event.stopPropagation(); showSearchDetails('${key}')" class="btn" style="background: linear-gradient(135deg, var(--info) 0%, #2563eb 100%); color: white;">
+                    <div class="search-card-actions">
+                        <button onclick="event.stopPropagation(); showSearchDetails('${key}')" class="search-card-action-btn">
                             📊 Détails
                         </button>
-                        <button onclick="event.stopPropagation(); editSearch('${key}')" class="btn" style="background: linear-gradient(135deg, var(--text-title) 0%, #5b21b6 100%); color: white;">
+                        <button onclick="event.stopPropagation(); editSearch('${key}')" class="search-card-action-btn search-card-action-btn-edit">
                             ✏️ Modifier
                         </button>
-                        <button onclick="event.stopPropagation(); duplicateSearch('${key}')" class="btn" style="background: linear-gradient(135deg, var(--warning) 0%, #d97706 100%); color: white;">
+                        <button onclick="event.stopPropagation(); duplicateSearch('${key}')" class="search-card-action-btn search-card-action-btn-duplicate">
                             📋 Dupliquer
                         </button>
-                        <button onclick="event.stopPropagation(); deleteSearch('${key}')" class="btn" style="background: linear-gradient(135deg, var(--error) 0%, #dc2626 100%); color: white;">
+                        <button onclick="event.stopPropagation(); deleteSearch('${key}')" class="search-card-action-btn search-card-action-btn-delete">
                             🗑️ Supprimer
                         </button>
                     </div>
@@ -308,12 +238,11 @@ function renderSearchesList() {
         }
         
         html += `
-            <div class="pagination-container" style="grid-column: 1 / -1; margin-top: 30px;">
+            <div class="pagination-container">
                 <div class="pagination-wrapper">
-                    <button class="pagination-btn pagination-btn-nav" 
+                    <button class="pagination-btn-nav" 
                             onclick="changePage(${currentPage - 1})" 
-                            ${currentPage === 1 ? 'disabled' : ''}
-                            ${currentPage === 1 ? '' : `onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'" onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)'"`}>
+                            ${currentPage === 1 ? 'disabled' : ''}>
                         <span class="pagination-icon">←</span>
                         <span class="pagination-text">Précédent</span>
                     </button>
@@ -325,7 +254,7 @@ function renderSearchesList() {
                             }
                             const isActive = page === currentPage;
                             return `
-                                <button class="pagination-btn pagination-btn-number ${isActive ? 'active' : ''}" 
+                                <button class="pagination-btn-number ${isActive ? 'active' : ''}" 
                                         onclick="changePage(${page})"
                                         ${isActive ? 'aria-current="page"' : ''}>
                                     ${page}
@@ -334,10 +263,9 @@ function renderSearchesList() {
                         }).join('')}
                     </div>
                     
-                    <button class="pagination-btn pagination-btn-nav" 
+                    <button class="pagination-btn-nav" 
                             onclick="changePage(${currentPage + 1})" 
-                            ${currentPage === totalPages ? 'disabled' : ''}
-                            ${currentPage === totalPages ? '' : `onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'" onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)'"`}>
+                            ${currentPage === totalPages ? 'disabled' : ''}>
                         <span class="pagination-text">Suivant</span>
                         <span class="pagination-icon">→</span>
                     </button>
@@ -457,14 +385,14 @@ async function showSearchDetails(searchKey) {
     
     let historyHtml = '';
     if (history.length === 0) {
-        historyHtml = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">Aucune exécution enregistrée</p>';
+        historyHtml = '<p class="history-empty">Aucune exécution enregistrée</p>';
     } else {
         history.slice(-10).reverse().forEach((run, idx) => {
             historyHtml += `
-                <div style="padding: 15px; margin-bottom: 10px; background: var(--border-color); border-radius: 8px; border-left: 4px solid var(--text-title);">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                        <strong style="color: var(--text-title);">Exécution #${history.length - idx}</strong>
-                        <span style="color: var(--text-secondary); font-size: 0.85em;">${new Date(run.timestamp).toLocaleString('fr-FR')}</span>
+                <div class="history-item">
+                    <div class="history-item-header">
+                        <strong class="history-item-title">Exécution #${history.length - idx}</strong>
+                        <span class="history-item-date">${new Date(run.timestamp).toLocaleString('fr-FR')}</span>
                     </div>
                     ${run.stats ? `
                         <div style="margin-top: 10px; padding: 10px; background: var(--bg-card); border-radius: 5px;">
