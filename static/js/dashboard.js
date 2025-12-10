@@ -513,10 +513,10 @@ function renderLogs() {
         `;
     }
     
-    // Ajouter la pagination avec le même style que les boutons de filtrage
+    // Ajouter la pagination avec le même style que les boutons de filtrage (sur une seule ligne)
     if (totalPages > 1) {
         html += `
-            <div style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 15px; padding: 15px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%); border-radius: 12px; border: 2px solid var(--border-color); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);">
+            <div style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 15px; padding: 15px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%); border-radius: 12px; border: 2px solid var(--border-color); box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2); flex-wrap: wrap;">
                 <button class="btn" onclick="changeLogsPage(${logsPage - 1})" ${logsPage === 1 ? 'disabled' : ''} style="
                     background: linear-gradient(135deg, var(--text-title) 0%, #5b21b6 100%);
                     color: white;
@@ -528,10 +528,12 @@ function renderLogs() {
                     transition: all 0.3s ease;
                     border: none;
                     cursor: pointer;
-                    display: inline-flex;
+                    display: flex;
                     align-items: center;
-                    gap: 8px;
-                " ${logsPage === 1 ? '' : `onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'" onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)'"`}>
+                    gap: 6px;
+                " onmouseenter="if (!this.disabled) { this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'; }" 
+                   onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)';"
+                   ${logsPage === 1 ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>
                     <span>←</span>
                     <span>Précédent</span>
                 </button>
@@ -544,8 +546,9 @@ function renderLogs() {
                     border: 2px solid var(--text-title);
                     font-size: 0.95em;
                     box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+                    white-space: nowrap;
                 ">
-                    Page <strong>${logsPage}</strong> sur <strong>${totalPages}</strong> (${allLogs.length} log${allLogs.length > 1 ? 's' : ''})
+                    Page <strong>${logsPage}</strong> sur <strong>${totalPages}</strong> (${totalItems} log${totalItems !== 1 ? 's' : ''})
                 </span>
                 <button class="btn" onclick="changeLogsPage(${logsPage + 1})" ${logsPage === totalPages ? 'disabled' : ''} style="
                     background: linear-gradient(135deg, var(--text-title) 0%, #5b21b6 100%);
@@ -558,10 +561,12 @@ function renderLogs() {
                     transition: all 0.3s ease;
                     border: none;
                     cursor: pointer;
-                    display: inline-flex;
+                    display: flex;
                     align-items: center;
-                    gap: 8px;
-                " ${logsPage === totalPages ? '' : `onmouseenter="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'" onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)'"`}>
+                    gap: 6px;
+                " onmouseenter="if (!this.disabled) { this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'; }" 
+                   onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102, 126, 234, 0.3)';"
+                   ${logsPage === totalPages ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''}>
                     <span>Suivant</span>
                     <span>→</span>
                 </button>
