@@ -290,9 +290,26 @@ install-deps: ## Installe les dépendances localement (sans Docker)
 	pip install -r requirements.txt
 	@printf "$(GREEN)✅ Dépendances installées$(NC)\n"
 
-dev: ## Lance l'application en mode développement (sans Docker)
-	@printf "$(GREEN)🔧 Démarrage en mode développement...$(NC)\n"
-	python app.py
+dev: ## Lance l'application en mode développement avec Docker et hot reload. Usage: make dev [LOGS=true|false]
+	@printf "$(GREEN)🔧 Démarrage en mode développement avec Docker (hot reload activé)...$(NC)\n"
+	@printf "$(YELLOW)⏹️  Arrêt des conteneurs existants...$(NC)\n"
+	@docker-compose -f $(COMPOSE_FILE) down 2>/dev/null || true
+	@docker stop $(CONTAINER_NAME) 2>/dev/null || true
+	@docker rm $(CONTAINER_NAME) 2>/dev/null || true
+	@sleep 1
+	@printf "$(GREEN)🚀 Démarrage en mode développement...$(NC)\n"
+	@if [ "$(LOGS)" = "true" ]; then \
+		printf "$(GREEN)📋 Affichage des logs en temps réel (Ctrl+C pour quitter)...$(NC)\n"; \
+		docker-compose -f docker-compose.dev.yml up --build; \
+	else \
+		docker-compose -f docker-compose.dev.yml up -d --build; \
+		sleep 2; \
+		printf "$(GREEN)✅ Application démarrée en mode développement!$(NC)\n"; \
+		printf "$(GREEN)🌐 Interface disponible sur http://localhost:$(PORT)$(NC)\n"; \
+		printf "$(GREEN)🔄 Hot reload activé - Les modifications sont détectées automatiquement$(NC)\n"; \
+		printf "$(YELLOW)💡 Utilisez 'make dev LOGS=true' pour voir les logs en temps réel$(NC)\n"; \
+		printf "$(YELLOW)💡 Utilisez 'make logs' pour voir les logs après coup$(NC)\n"; \
+	fi
 
 # Commande par défaut
 .DEFAULT_GOAL := help

@@ -1,0 +1,28 @@
+services:
+  auto-apply:
+    build: .
+    container_name: auto-apply-dashboard
+    ports:
+      - "2020:2020"  # Port principal pour l'interface web
+    volumes:
+      - ./config:/app/config
+      - ./templates:/app/templates
+      - ./static:/app/static
+      - ./cvs:/app/cvs
+      - ./photos:/app/photos
+      - ./data:/app/data
+      - ./src:/app/src
+      - ./tests:/app/tests
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    networks:
+      - auto-apply-network
+    command: python -m flask run --host=0.0.0.0 --port=2020 --debug --reload
+
+networks:
+  auto-apply-network:
+    driver: bridge
+

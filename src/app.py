@@ -2119,5 +2119,7 @@ if __name__ == '__main__':
     app_state['container_status'] = 'running'
     log_message("🚀 Serveur démarré - Système prêt", "success")
     # Démarrer le serveur
-    socketio.run(app, host='0.0.0.0', port=2020, debug=True, use_reloader=False)
+    # use_reloader activé pour le hot reload en mode développement
+    debug_mode = os.getenv('FLASK_DEBUG', '0') == '1' or os.getenv('FLASK_ENV') == 'development'
+    socketio.run(app, host='0.0.0.0', port=2020, debug=debug_mode, use_reloader=debug_mode)
 
