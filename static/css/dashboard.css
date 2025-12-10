@@ -133,12 +133,13 @@
 .stat-item {
     display: flex;
     align-items: center;
-    gap: 15px;
-    padding: 12px;
+    gap: 12px;
+    padding: 10px 12px;
     background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
     border-radius: 10px;
     border: 2px solid var(--border-color);
     transition: all 0.3s ease;
+    min-width: 0;
 }
 
 .stat-item:hover {
@@ -151,13 +152,14 @@
     color: var(--text-primary);
     font-weight: 800;
     font-size: 2em;
-    min-width: 60px;
+    min-width: 50px;
     text-align: center;
     background: linear-gradient(135deg, var(--text-title) 0%, #5b21b6 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     line-height: 1;
+    flex-shrink: 0;
 }
 
 .stat-label {
@@ -166,8 +168,10 @@
     font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     flex: 1;
+    min-width: 0;
+    white-space: nowrap;
 }
 
 .stat-value.success {
@@ -184,8 +188,26 @@
     background-clip: text;
 }
 
-/* Responsive pour les statistiques - seulement sur très petit écran */
-@media (max-width: 480px) {
+/* Ajustement pour écrans moyens - réduire les tailles pour tenir sur une ligne */
+@media (max-width: 768px) and (min-width: 361px) {
+    .stat-value {
+        font-size: 1.5em;
+        min-width: 45px;
+    }
+    
+    .stat-label {
+        font-size: 0.85em;
+        gap: 4px;
+    }
+    
+    .stat-item {
+        padding: 8px 10px;
+        gap: 10px;
+    }
+}
+
+/* Responsive pour les statistiques - seulement sur très petit écran (< 360px) */
+@media (max-width: 360px) {
     .stat-item {
         flex-direction: column;
         align-items: flex-start;
@@ -201,23 +223,7 @@
     
     .stat-label {
         font-size: 0.9em;
-    }
-}
-
-/* Ajustement pour écrans moyens - garder horizontal mais réduire les tailles */
-@media (max-width: 768px) and (min-width: 481px) {
-    .stat-value {
-        font-size: 1.6em;
-        min-width: 50px;
-    }
-    
-    .stat-label {
-        font-size: 0.9em;
-    }
-    
-    .stat-item {
-        padding: 10px;
-        gap: 12px;
+        white-space: normal;
     }
 }
 
