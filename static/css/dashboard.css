@@ -184,8 +184,8 @@
     background-clip: text;
 }
 
-/* Responsive pour les statistiques */
-@media (max-width: 768px) {
+/* Responsive pour les statistiques - seulement sur très petit écran */
+@media (max-width: 480px) {
     .stat-item {
         flex-direction: column;
         align-items: flex-start;
@@ -201,6 +201,23 @@
     
     .stat-label {
         font-size: 0.9em;
+    }
+}
+
+/* Ajustement pour écrans moyens - garder horizontal mais réduire les tailles */
+@media (max-width: 768px) and (min-width: 481px) {
+    .stat-value {
+        font-size: 1.6em;
+        min-width: 50px;
+    }
+    
+    .stat-label {
+        font-size: 0.9em;
+    }
+    
+    .stat-item {
+        padding: 10px;
+        gap: 12px;
     }
 }
 
