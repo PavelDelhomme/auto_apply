@@ -20,7 +20,7 @@ services:
     restart: unless-stopped
     networks:
       - auto-apply-network
-    command: python src/app.py
+    command: python -m src.app
 
 networks:
   auto-apply-network:
