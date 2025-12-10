@@ -342,6 +342,89 @@ dev: ## Lance l'application en mode développement avec Docker et hot reload. Us
 		printf "$(YELLOW)💡 Utilisez 'make logs' pour voir les logs après coup$(NC)\n"; \
 	fi
 
+check-file: ## Vérifie si un fichier est présent dans n'importe quelle branche ou commit. Usage: make check-file FILE=config/personas.json
+	@if [ -z "$(FILE)" ]; then \
+		printf "$(RED)❌ Erreur: Spécifiez un fichier avec FILE=\"chemin/vers/fichier\"$(NC)\n"; \
+		printf "$(YELLOW)💡 Exemple: make check-file FILE=config/personas.json$(NC)\n"; \
+		exit 1; \
+	fi
+	@INDEX_FOUND=0; \
+	BRANCH_FOUND=0; \
+	REMOTE_FOUND=0; \
+	HISTORY_FOUND=0; \
+	printf "$(GREEN)═══════════════════════════════════════════════════════════════$(NC)\n"; \
+	printf "$(GREEN)🔍 VÉRIFICATION DU FICHIER: $(FILE)$(NC)\n"; \
+	printf "$(GREEN)═══════════════════════════════════════════════════════════════$(NC)\n"; \
+	printf "\n"; \
+	printf "$(YELLOW)📋 Étape 1/4: Vérification dans l'index Git actuel...$(NC)\n"; \
+	if git ls-files --error-unmatch "$(FILE)" >/dev/null 2>&1; then \
+		printf "$(RED)   ❌ Fichier présent dans l'index Git actuel$(NC)\n"; \
+		INDEX_FOUND=1; \
+	else \
+		printf "$(GREEN)   ✅ Fichier absent de l'index Git actuel$(NC)\n"; \
+	fi; \
+	printf "\n"; \
+	printf "$(YELLOW)🌿 Étape 2/4: Recherche dans toutes les branches locales...$(NC)\n"; \
+	BRANCH_COUNT=0; \
+	for branch in $$(git branch --format='%(refname:short)'); do \
+		BRANCH_COUNT=$$((BRANCH_COUNT + 1)); \
+		if git ls-tree -r --name-only "$$branch" 2>/dev/null | grep -q "^$(FILE)$$"; then \
+			printf "$(RED)   ❌ Trouvé dans la branche locale: $$branch$(NC)\n"; \
+			BRANCH_FOUND=1; \
+		fi; \
+	done; \
+	if [ $$BRANCH_FOUND -eq 0 ]; then \
+		printf "$(GREEN)   ✅ Fichier absent de toutes les branches locales ($$BRANCH_COUNT vérifiées)$(NC)\n"; \
+	fi; \
+	printf "\n"; \
+	printf "$(YELLOW)🌐 Étape 3/4: Recherche dans toutes les branches distantes...$(NC)\n"; \
+	git fetch --all --quiet 2>/dev/null || true; \
+	REMOTE_COUNT=0; \
+	for branch in $$(git branch -r --format='%(refname:short)' 2>/dev/null | grep -v HEAD); do \
+		REMOTE_COUNT=$$((REMOTE_COUNT + 1)); \
+		if git ls-tree -r --name-only "$$branch" 2>/dev/null | grep -q "^$(FILE)$$"; then \
+			printf "$(RED)   ❌ Trouvé dans la branche distante: $$branch$(NC)\n"; \
+			REMOTE_FOUND=1; \
+		fi; \
+	done; \
+	if [ $$REMOTE_FOUND -eq 0 ]; then \
+		printf "$(GREEN)   ✅ Fichier absent de toutes les branches distantes ($$REMOTE_COUNT vérifiées)$(NC)\n"; \
+	fi; \
+	printf "\n"; \
+	printf "$(YELLOW)📜 Étape 4/4: Recherche dans tout l'historique Git (tous les commits)...$(NC)\n"; \
+	HISTORY_COUNT=$$(git log --all --oneline --name-only --pretty=format: -- "$(FILE)" 2>/dev/null | grep -c "^$(FILE)$$" || echo 0); \
+	if [ $$HISTORY_COUNT -gt 0 ]; then \
+		printf "$(RED)   ❌ Fichier trouvé dans l'historique Git: $$HISTORY_COUNT occurrence(s)$(NC)\n"; \
+		printf "$(YELLOW)   📝 Commits concernés:$(NC)\n"; \
+		git log --all --oneline --format="      - %h %s (%ar)" -- "$(FILE)" 2>/dev/null | head -10; \
+		if [ $$HISTORY_COUNT -gt 10 ]; then \
+			printf "$(YELLOW)      ... et $$((HISTORY_COUNT - 10)) autre(s)$(NC)\n"; \
+		fi; \
+		HISTORY_FOUND=1; \
+	else \
+		printf "$(GREEN)   ✅ Fichier absent de tout l'historique Git$(NC)\n"; \
+	fi; \
+	printf "\n"; \
+	printf "$(GREEN)═══════════════════════════════════════════════════════════════$(NC)\n"; \
+	printf "$(GREEN)📊 RÉSUMÉ$(NC)\n"; \
+	printf "$(GREEN)═══════════════════════════════════════════════════════════════$(NC)\n"; \
+	TOTAL_FOUND=0; \
+	if [ "$$INDEX_FOUND" = "1" ]; then TOTAL_FOUND=1; fi; \
+	if [ "$$BRANCH_FOUND" = "1" ]; then TOTAL_FOUND=1; fi; \
+	if [ "$$REMOTE_FOUND" = "1" ]; then TOTAL_FOUND=1; fi; \
+	if [ "$$HISTORY_FOUND" = "1" ]; then TOTAL_FOUND=1; fi; \
+	if [ "$$TOTAL_FOUND" = "1" ]; then \
+		printf "$(RED)❌ FICHIER TROUVÉ DANS LE DÉPÔT GIT$(NC)\n"; \
+		printf "$(YELLOW)⚠️  Ce fichier est présent dans au moins un endroit du dépôt$(NC)\n"; \
+		printf "$(YELLOW)💡 Pour le supprimer complètement, utilisez:$(NC)\n"; \
+		printf "$(YELLOW)   git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch $(FILE)' --prune-empty --tag-name-filter cat -- --all$(NC)\n"; \
+		exit 1; \
+	else \
+		printf "$(GREEN)✅ FICHIER ABSENT DU DÉPÔT GIT$(NC)\n"; \
+		printf "$(GREEN)✨ Le fichier n'est présent dans aucune branche ni aucun commit$(NC)\n"; \
+		exit 0; \
+	fi
+
 # Commande par défaut
 .DEFAULT_GOAL := help
 
