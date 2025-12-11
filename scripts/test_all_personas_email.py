@@ -10,12 +10,19 @@ import sys
 import imaplib
 import socket
 import time
+import threading
+import random
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Ajouter le répertoire parent au path
 project_root = os.path.join(os.path.dirname(__file__), '..')
 sys.path.insert(0, os.path.join(project_root, 'src'))
+
+# Ajouter le chemin dotfiles pour utiliser progress_utils
+dotfiles_utils = os.path.expanduser('~/dotfiles/core/utils')
+if os.path.exists(dotfiles_utils):
+    sys.path.insert(0, dotfiles_utils)
 
 # Définir le chemin du fichier personas.json
 # Dans Docker, le chemin est /app, localement c'est le répertoire parent
@@ -28,6 +35,15 @@ else:
     personas_file = os.path.join(project_root, 'config', 'personas.json')
 
 from persona_manager import PersonaManager
+
+# Importer ProgressBar depuis dotfiles si disponible, sinon utiliser la fonction locale
+# Le module progress_utils est dans ~/dotfiles/core/utils/
+try:
+    from progress_utils import ProgressBar
+    USE_PROGRESS_BAR = True
+except ImportError:
+    # Fallback: utiliser la fonction locale si dotfiles n'est pas disponible (ex: dans Docker)
+    USE_PROGRESS_BAR = False
 
 # Créer une instance avec le bon chemin
 persona_manager = PersonaManager(personas_file=personas_file)
@@ -298,38 +314,72 @@ def main():
     
     results = []
     start_time = time.time()
+    
+    # Variables partagées pour la progression (protégées par un lock)
+    progress_lock = threading.Lock()
+    completed = 0
     successful_count = 0
     failed_count = 0
     
-    # Fonction pour afficher la progression
-    def print_progress(completed, total, successful, failed, elapsed_time):
-        percentage = (completed / total) * 100
-        bar_length = 40
-        filled = int(bar_length * completed / total)
-        bar = '█' * filled + '░' * (bar_length - filled)
-        
-        # Estimation du temps restant
-        if completed > 0:
-            avg_time_per_persona = elapsed_time / completed
-            remaining = total - completed
-            estimated_remaining = avg_time_per_persona * remaining
-            eta = timedelta(seconds=int(estimated_remaining))
-            elapsed_str = timedelta(seconds=int(elapsed_time))
-            time_info = f"⏱️  {elapsed_str} écoulé | ~{eta} restant"
-        else:
-            time_info = "⏱️  Calcul en cours..."
-        
-        # Statistiques
-        stats = f"✅ {successful} | ❌ {failed}"
-        
-        # Afficher la barre de progression
-        sys.stdout.write(f"\r[{completed}/{total}] {percentage:.1f}% |{bar}| {stats} | {time_info}")
-        sys.stdout.flush()
+    # Utiliser ProgressBar depuis dotfiles si disponible
+    if USE_PROGRESS_BAR:
+        progress = ProgressBar(total, "Test de connexions email")
+    else:
+        # Fonction locale de fallback si dotfiles n'est pas disponible
+        def print_progress(completed, total, successful, failed, elapsed_time):
+            percentage = (completed / total) * 100
+            bar_length = 40
+            filled = int(bar_length * completed / total)
+            bar = '█' * filled + '░' * (bar_length - filled)
+            
+            # Estimation du temps restant
+            if completed > 0:
+                avg_time_per_persona = elapsed_time / completed
+                remaining = total - completed
+                estimated_remaining = avg_time_per_persona * remaining
+                eta = timedelta(seconds=int(estimated_remaining))
+                elapsed_str = timedelta(seconds=int(elapsed_time))
+                time_info = f"⏱️  {elapsed_str} écoulé | ~{eta} restant"
+            else:
+                time_info = "⏱️  Calcul en cours..."
+            
+            # Statistiques
+            stats = f"✅ {successful} | ❌ {failed}"
+            
+            # Afficher la barre de progression
+            sys.stdout.write(f"\r[{completed}/{total}] {percentage:.1f}% |{bar}| {stats} | {time_info}")
+            sys.stdout.flush()
+    
+    # Thread pour mettre à jour la barre de progression régulièrement (toutes les secondes)
+    update_stop = threading.Event()
+    
+    def update_progress_periodically():
+        """Met à jour la barre de progression toutes les secondes."""
+        while not update_stop.is_set():
+            time.sleep(1.0)  # Mettre à jour toutes les secondes
+            if update_stop.is_set():
+                break
+            
+            with progress_lock:
+                current_completed = completed
+                current_successful = successful_count
+                current_failed = failed_count
+                current_elapsed = time.time() - start_time
+            
+            if USE_PROGRESS_BAR:
+                # Utiliser ProgressBar depuis dotfiles
+                progress.update(current_completed, current_successful, current_failed, force=True)
+            else:
+                # Utiliser la fonction locale
+                print_progress(current_completed, total, current_successful, current_failed, current_elapsed)
+    
+    # Démarrer le thread de mise à jour périodique
+    progress_thread = threading.Thread(target=update_progress_periodically, daemon=True)
+    progress_thread.start()
     
     # Tester tous les personas en parallèle (max 3 simultanés pour éviter les blocages GMX)
     # Réduit à 3 pour éviter les blocages de comptes après trop de tentatives
     # Ajout d'un délai aléatoire entre les soumissions pour espacer les connexions
-    import random
     with ThreadPoolExecutor(max_workers=3) as executor:
         futures = {}
         for idx, (persona_key, persona) in enumerate(all_personas.items()):
@@ -339,23 +389,31 @@ def main():
             future = executor.submit(test_email_connection, persona_key, persona, persona_manager, all_personas)
             futures[future] = (persona_key, persona.get('name', 'N/A'))
         
-        completed = 0
-        last_print_time = time.time()
-        
         for future in as_completed(futures):
-            completed += 1
             persona_key, persona_name = futures[future]
             elapsed_time = time.time() - start_time
             
             try:
                 result = future.result()
                 results.append(result)
-                if result['success']:
-                    successful_count += 1
-                else:
-                    failed_count += 1
+                with progress_lock:
+                    completed += 1
+                    if result['success']:
+                        successful_count += 1
+                    else:
+                        failed_count += 1
+                    
+                    # Mettre à jour immédiatement à chaque complétion
+                    if USE_PROGRESS_BAR:
+                        # Utiliser ProgressBar depuis dotfiles
+                        progress.update(completed, successful_count, failed_count, force=True)
+                    else:
+                        # Utiliser la fonction locale
+                        print_progress(completed, total, successful_count, failed_count, elapsed_time)
             except Exception as e:
-                failed_count += 1
+                with progress_lock:
+                    completed += 1
+                    failed_count += 1
                 results.append({
                     'persona_key': persona_key,
                     'name': persona_name,
@@ -367,16 +425,24 @@ def main():
                     'password_source': 'none',
                     'requires_imap_activation': False
                 })
-            
-            # Afficher la progression toutes les 0.3 secondes ou à chaque complétion
-            current_time = time.time()
-            if current_time - last_print_time >= 0.3 or completed == total:
-                print_progress(completed, total, successful_count, failed_count, elapsed_time)
-                last_print_time = current_time
-        
-        # Afficher la progression finale
-        print_progress(completed, total, successful_count, failed_count, time.time() - start_time)
-        print()  # Nouvelle ligne après la barre de progression
+                # Mettre à jour après l'erreur aussi
+                with progress_lock:
+                    if USE_PROGRESS_BAR:
+                        progress.update(completed, successful_count, failed_count, force=True)
+                    else:
+                        print_progress(completed, total, successful_count, failed_count, time.time() - start_time)
+    
+    # Arrêter le thread de mise à jour périodique
+    update_stop.set()
+    progress_thread.join(timeout=2.0)  # Attendre max 2 secondes
+    
+    # Afficher la progression finale
+    with progress_lock:
+        if USE_PROGRESS_BAR:
+            progress.finish(show_summary=False)  # On affichera le résumé nous-mêmes
+        else:
+            print_progress(completed, total, successful_count, failed_count, time.time() - start_time)
+            print()  # Nouvelle ligne après la barre de progression
     
     # Générer le rapport
     report_path = generate_report(results)

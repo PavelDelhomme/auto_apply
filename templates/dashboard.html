@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Auto Apply - Dashboard</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <!-- Socket.IO désactivé - non configuré côté backend -->
+    <!-- <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script> -->
     <link rel="stylesheet" href="/static/css/dashboard.css">
     <link rel="stylesheet" href="/static/css/components.css">
     <script src="/static/js/components.js"></script>
@@ -1634,8 +1635,21 @@
     </div>
     
     <script>
-        const socket = io();
+        // Socket.IO désactivé - gestion silencieuse si non disponible
+        window.socket = null;
         let isRunning = false;
+        
+        // Essayer de se connecter à Socket.IO si disponible (désactivé pour l'instant)
+        try {
+            if (typeof io !== 'undefined') {
+                window.socket = io();
+            }
+        } catch (e) {
+            console.log('Socket.IO non disponible (normal si non configuré)');
+        }
+        
+        // Alias pour compatibilité
+        const socket = window.socket;
         let allPersonas = {};
         let selectedPersonas = new Set();
         let currentSection = 'dashboard';
@@ -1741,45 +1755,81 @@
             setTheme(newTheme);
         }
         
-        // WebSocket events
-        socket.on('connect', () => {
-            addLog('Connecté au serveur', 'success');
-            updateStatus();
-            loadPersonas();
-            loadDrawerStats();
-        });
-        
-        socket.on('log', (data) => {
-            addLog(data.message, data.level, data.timestamp);
-        });
-        
-        socket.on('stats_update', (stats) => {
-            updateStats(stats);
-            loadDrawerStats();
-        });
-        
-        socket.on('status_update', (data) => {
-            isRunning = data.is_running;
-            updateStatusUI(data.step, data.is_running);
-        });
-        
-        socket.on('application_start', (data) => {
-            addLog(`${data.persona} postule pour: ${data.job} chez ${data.company}`, 'info');
-        });
-        
-        socket.on('application_success', (data) => {
-            addLog(`✅ ${data.persona}: Candidature envoyée pour ${data.job}`, 'success');
-        });
-        
-        socket.on('application_failed', (data) => {
-            addLog(`❌ ${data.persona}: Échec pour ${data.job}`, 'error');
-        });
-        
-        socket.on('scrape_complete', (data) => {
-            addLog(`Recherche terminée: ${data.count} offres trouvées`, 'success');
-            const jobsFound = document.getElementById('jobsFound');
-            if (jobsFound) jobsFound.textContent = data.count;
-        });
+        // WebSocket events (si Socket.IO est disponible)
+        if (window.socket) {
+            window.socket.on('connect', () => {
+                if (typeof addLog === 'function') {
+                    addLog('Connecté au serveur', 'success');
+                }
+                if (typeof updateStatus === 'function') {
+                    updateStatus();
+                }
+                if (typeof loadPersonas === 'function') {
+                    loadPersonas();
+                }
+                if (typeof loadDrawerStats === 'function') {
+                    loadDrawerStats();
+                }
+            });
+            
+            window.socket.on('log', (data) => {
+                if (typeof addLog === 'function') {
+                    addLog(data.message, data.level, data.timestamp);
+                }
+            });
+            
+            window.socket.on('stats_update', (stats) => {
+                if (typeof updateStats === 'function') {
+                    updateStats(stats);
+                }
+                if (typeof loadDrawerStats === 'function') {
+                    loadDrawerStats();
+                }
+            });
+            
+            window.socket.on('status_update', (data) => {
+                isRunning = data.is_running;
+                if (typeof updateStatusUI === 'function') {
+                    updateStatusUI(data.step, data.is_running);
+                }
+            });
+            
+            window.socket.on('application_start', (data) => {
+                if (typeof addLog === 'function') {
+                    addLog(`${data.persona} postule pour: ${data.job} chez ${data.company}`, 'info');
+                }
+            });
+            
+            window.socket.on('application_success', (data) => {
+                if (typeof addLog === 'function') {
+                    addLog(`✅ ${data.persona}: Candidature envoyée pour ${data.job}`, 'success');
+                }
+            });
+            
+            window.socket.on('application_failed', (data) => {
+                if (typeof addLog === 'function') {
+                    addLog(`❌ ${data.persona}: Échec pour ${data.job}`, 'error');
+                }
+            });
+            
+            window.socket.on('scrape_complete', (data) => {
+                if (typeof addLog === 'function') {
+                    addLog(`Recherche terminée: ${data.count} offres trouvées`, 'success');
+                }
+                const jobsFound = document.getElementById('jobsFound');
+                if (jobsFound) jobsFound.textContent = data.count;
+            });
+        } else {
+            // Initialiser sans Socket.IO
+            document.addEventListener('DOMContentLoaded', () => {
+                if (typeof loadPersonas === 'function') {
+                    loadPersonas();
+                }
+                if (typeof loadDrawerStats === 'function') {
+                    loadDrawerStats();
+                }
+            });
+        }
         
         // Fonctions utilitaires
         function addLog(message, level = 'info', timestamp = null) {

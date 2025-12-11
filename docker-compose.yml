@@ -14,9 +14,13 @@ services:
       - ./src:/app/src
       - ./tests:/app/tests
       - ./scripts:/app/scripts
+      # Monter personas.json depuis l'extérieur du projet (../../personas.json)
+      - ../../personas.json:/app/config/personas.json:ro
     environment:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
+      # Décommentez et ajustez le chemin si personas.json est ailleurs:
+      # - PERSONAS_FILE=/chemin/vers/personas.json
     restart: unless-stopped
     networks:
       - auto-apply-network

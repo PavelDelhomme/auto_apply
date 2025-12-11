@@ -23,6 +23,54 @@ from .persona_manager import PersonaManager
 from .search_manager import SearchManager
 import os
 
+# Configuration du logging Python standard avec format personnalisé
+def setup_logging():
+    """Configure le logging Python standard avec le format personnalisé."""
+    class CustomFormatter(logging.Formatter):
+        """Formateur personnalisé pour les logs."""
+        def format(self, record):
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            level = record.levelname
+            # Mapper les niveaux Python vers nos niveaux personnalisés
+            level_map = {
+                'DEBUG': 'DEBUG',
+                'INFO': 'INFO',
+                'WARNING': 'WARNING',
+                'ERROR': 'ERROR',
+                'CRITICAL': 'ERROR'
+            }
+            level_display = level_map.get(level, level)
+            return f"[{timestamp}] [{level_display}] {record.getMessage()}"
+    
+    # Configurer le handler pour stdout avec notre formateur
+    handler = logging.StreamHandler()
+    handler.setFormatter(CustomFormatter())
+    handler.setLevel(logging.INFO)
+    
+    # Configurer le logger racine (pour capturer tous les logs)
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    # Supprimer les handlers existants pour éviter les doublons
+    root_logger.handlers = []
+    root_logger.addHandler(handler)
+    
+    # Configurer aussi les loggers spécifiques
+    loggers_to_configure = [
+        logging.getLogger(__name__),  # Logger de l'application
+        logging.getLogger('werkzeug'),  # Logger de Flask
+        logging.getLogger('flask'),  # Logger de Flask
+        logging.getLogger('socketio'),  # Logger de Socket.IO
+    ]
+    
+    for app_logger in loggers_to_configure:
+        app_logger.setLevel(logging.INFO)
+        app_logger.handlers = []  # Supprimer les handlers existants
+        app_logger.addHandler(handler)
+        app_logger.propagate = False  # Éviter la propagation pour éviter les doublons
+
+# Initialiser le logging AVANT de créer le logger
+setup_logging()
+
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__, template_folder='/app/templates', static_folder='/app/static')
@@ -48,15 +96,39 @@ app_state['container_status'] = 'running'
 def load_personas():
     """Charge les personas depuis le fichier JSON."""
     try:
-        personas_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'personas.json')
+        # Utiliser le même chemin que PersonaManager
+        personas_file = os.getenv('PERSONAS_FILE', '/app/config/personas.json')
+        
+        # Si le fichier n'existe pas, chercher dans le répertoire parent
+        if not os.path.exists(personas_file):
+            parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            parent_file = os.path.join(parent_dir, 'personas.json')
+            if os.path.exists(parent_file):
+                personas_file = parent_file
+                logger.info(f"Fichier personas.json trouvé dans: {personas_file}")
+            else:
+                logger.warning(f"Le fichier personas.json n'existe pas encore: {personas_file}")
+                logger.info("💡 Créez-le avec: cp config/personas.json.example config/personas.json")
+                logger.info(f"💡 Ou placez-le dans: {parent_file}")
+                return {}
+        
         with open(personas_file, 'r', encoding='utf-8') as file:
-            return json.load(file)
+            personas = json.load(file)
+            logger.info(f"✅ {len(personas)} persona(s) chargé(s) depuis: {personas_file}")
+            return personas
+    except json.JSONDecodeError as e:
+        logger.error(f"Erreur de format JSON dans personas.json: {e}")
+        log_message(f"Erreur de format JSON dans personas.json: {e}", "error")
+        return {}
     except Exception as e:
+        logger.error(f"Erreur lors du chargement des personas: {e}")
         log_message(f"Erreur lors du chargement des personas: {e}", "error")
         return {}
 
 # Initialiser les gestionnaires avec les bons chemins
-persona_manager = PersonaManager("/app/config/personas.json")
+# Permettre de spécifier le chemin via variable d'environnement PERSONAS_FILE
+personas_file = os.getenv('PERSONAS_FILE', '/app/config/personas.json')
+persona_manager = PersonaManager(personas_file)
 search_manager = SearchManager("/app/config/searches.json")
 
 def load_cvs():
@@ -89,8 +161,27 @@ def log_message(message, level="info", category="general", is_test_data=False):
     except Exception as e:
         logger.error(f"Erreur lors de l'insertion du log: {e}")
     
-    socketio.emit('log', log_entry)
-    print(f"[{timestamp}] [{level.upper()}] {message}")
+    # Émettre via WebSocket
+    try:
+        socketio.emit('log', log_entry)
+    except Exception as e:
+        # Si Socket.IO n'est pas disponible, continuer sans erreur
+        pass
+    
+    # Afficher dans stdout avec le format personnalisé (pour make logs)
+    level_upper = level.upper()
+    print(f"[{timestamp}] [{level_upper}] {message}", flush=True)
+    
+    # Aussi utiliser le logger Python standard pour cohérence
+    level_map = {
+        'success': logging.INFO,
+        'info': logging.INFO,
+        'warning': logging.WARNING,
+        'error': logging.ERROR,
+        'debug': logging.DEBUG
+    }
+    log_level = level_map.get(level.lower(), logging.INFO)
+    logger.log(log_level, message)
 
 def update_stats():
     """Met à jour les statistiques et les émet."""

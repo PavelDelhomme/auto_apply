@@ -94,11 +94,24 @@ shell-root: ## Ouvre un shell root dans le conteneur
 	docker-compose -f $(COMPOSE_FILE) exec -u root $(SERVICE_NAME) bash
 
 ps: ## Affiche l'état des conteneurs
-	@printf "$(GREEN)📊 État des conteneurs:$(NC)\n"
-	docker-compose -f $(COMPOSE_FILE) ps
+	@CONTAINERS=$$(docker-compose -f $(COMPOSE_FILE) ps -q 2>/dev/null | wc -l); \
+	if [ "$$CONTAINERS" -gt 0 ]; then \
+		printf "$(GREEN)📊 État des conteneurs:$(NC)\n"; \
+		docker-compose -f $(COMPOSE_FILE) ps 2>/dev/null || true; \
+	else \
+		printf "$(YELLOW)ℹ️  Aucun conteneur en cours d'exécution$(NC)\n"; \
+		printf "$(YELLOW)💡 Démarrez les conteneurs avec 'make start'$(NC)\n"; \
+	fi
 
 status: ## Affiche l'état détaillé (alias de ps)
-	@$(MAKE) ps
+	@CONTAINERS=$$(docker-compose -f $(COMPOSE_FILE) ps -q 2>/dev/null | wc -l); \
+	if [ "$$CONTAINERS" -gt 0 ]; then \
+		printf "$(GREEN)📊 État des conteneurs:$(NC)\n"; \
+		docker-compose -f $(COMPOSE_FILE) ps 2>/dev/null || true; \
+	else \
+		printf "$(YELLOW)ℹ️  Aucun conteneur en cours d'exécution$(NC)\n"; \
+		printf "$(YELLOW)💡 Démarrez les conteneurs avec 'make start'$(NC)\n"; \
+	fi
 
 stats: ## Affiche les statistiques d'utilisation des ressources
 	@printf "$(GREEN)📈 Statistiques des conteneurs (Ctrl+C pour quitter)...$(NC)\n"
@@ -295,12 +308,13 @@ test-reports: ## Copie les rapports de test depuis le conteneur vers le réperto
 	@printf "$(GREEN)✅ Rapports copiés dans ./test_reports/$(NC)\n"
 	@printf "$(YELLOW)💡 Ouvrez ./test_reports/coverage_html/index.html dans votre navigateur$(NC)\n"
 
-test-email: ## Teste les connexions email de tous les personas et génère un rapport
+test-email: ## Teste les connexions email de tous les personas et génère un rapport (utilise progress_utils depuis dotfiles)
 	@printf "$(GREEN)📧 Test des connexions email pour tous les personas...$(NC)\n"
 	@printf "$(YELLOW)⏳ Vérification que le conteneur est en cours d'exécution...$(NC)\n"
 	@docker-compose -f $(COMPOSE_FILE) exec $(SERVICE_NAME) python -c "import sys; print('✅ Python:', sys.version.split()[0])" 2>/dev/null || (printf "$(RED)❌ Le conteneur n'est pas accessible. Démarrez-le avec 'make start'$(NC)\n"; exit 1)
 	@printf "$(GREEN)🚀 Lancement du test des emails...$(NC)\n"
 	@printf "$(YELLOW)⏳ Cela peut prendre plusieurs minutes selon le nombre de personas...$(NC)\n"
+	@printf "$(YELLOW)💡 Le script utilise progress_utils depuis ~/dotfiles/core/utils si disponible$(NC)\n"
 	@docker-compose -f $(COMPOSE_FILE) exec -e PYTHONPATH=/app -T $(SERVICE_NAME) python3 /app/scripts/test_all_personas_email.py; \
 	EXIT_CODE=$$?; \
 	if [ "$$EXIT_CODE" -eq 0 ] || [ "$$EXIT_CODE" -eq 130 ] || [ "$$EXIT_CODE" -eq 124 ]; then \

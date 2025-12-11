@@ -9,17 +9,34 @@ import random
 import string
 
 class PersonaManager:
-    def __init__(self, personas_file="/app/config/personas.json"):
+    def __init__(self, personas_file=None):
+        # Permettre de spécifier le chemin via variable d'environnement
+        if personas_file is None:
+            personas_file = os.getenv('PERSONAS_FILE', '/app/config/personas.json')
+        
+        # Si le fichier n'existe pas au chemin par défaut, chercher dans le répertoire parent
+        if not os.path.exists(personas_file):
+            # Chercher dans le répertoire parent du projet (../../personas.json)
+            parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            parent_file = os.path.join(parent_dir, 'personas.json')
+            if os.path.exists(parent_file):
+                personas_file = parent_file
+                print(f"[INFO] Utilisation du fichier personas.json trouvé dans: {personas_file}")
+        
         self.personas_file = personas_file
         self.personas = self.load_personas()
     
     def load_personas(self) -> Dict:
         """Charge les personas depuis le fichier JSON."""
         if not os.path.exists(self.personas_file):
+            # Le fichier n'existe pas encore, ce n'est pas une erreur
             return {}
         try:
             with open(self.personas_file, 'r', encoding='utf-8') as file:
                 return json.load(file)
+        except json.JSONDecodeError as e:
+            print(f"Erreur de format JSON dans personas.json: {e}")
+            return {}
         except Exception as e:
             print(f"Erreur lors du chargement des personas: {e}")
             return {}

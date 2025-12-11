@@ -1134,13 +1134,17 @@ document.addEventListener('DOMContentLoaded', () => {
     addLog('Page chargée', 'success');
     
     // Écouter les événements WebSocket pour les logs
-    if (typeof socket !== 'undefined') {
-        socket.on('log', (data) => {
-            addLog(data.message, data.level, data.timestamp);
+    if (window.socket && typeof window.socket !== 'undefined' && window.socket !== null) {
+        window.socket.on('log', (data) => {
+            if (typeof addLog === 'function') {
+                addLog(data.message, data.level, data.timestamp);
+            }
         });
         
-        socket.on('stats_update', (stats) => {
-            updateStats(stats);
+        window.socket.on('stats_update', (stats) => {
+            if (typeof updateStats === 'function') {
+                updateStats(stats);
+            }
         });
     }
 });

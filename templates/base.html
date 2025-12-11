@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Auto Apply{% endblock %}</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <!-- Socket.IO désactivé - non configuré côté backend -->
+    <!-- <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script> -->
     <link rel="stylesheet" href="/static/css/dashboard.css">
     <link rel="stylesheet" href="/static/css/components.css">
     <script src="/static/js/components.js"></script>
@@ -844,8 +845,76 @@
     {% block modals %}{% endblock %}
     
     <script>
-        const socket = io();
+        // Socket.IO désactivé - gestion silencieuse si non disponible
+        let socket = null;
         let isRunning = false;
+        
+        // Essayer de se connecter à Socket.IO si disponible (désactivé pour l'instant)
+        try {
+            if (typeof io !== 'undefined') {
+                socket = io();
+                socket.on('connect', () => {
+                    const statusIndicator = document.getElementById('statusIndicator');
+                    const statusText = document.getElementById('statusText');
+                    if (statusIndicator) {
+                        statusIndicator.classList.add('active');
+                        statusIndicator.classList.remove('inactive');
+                    }
+                    if (statusText) {
+                        statusText.textContent = 'Prêt';
+                    }
+                });
+                
+                socket.on('disconnect', () => {
+                    const statusIndicator = document.getElementById('statusIndicator');
+                    const statusText = document.getElementById('statusText');
+                    if (statusIndicator) {
+                        statusIndicator.classList.remove('active');
+                        statusIndicator.classList.add('inactive');
+                    }
+                    if (statusText) {
+                        statusText.textContent = 'Déconnecté';
+                    }
+                });
+                
+                socket.on('log', (data) => {
+                    if (typeof addLog === 'function') {
+                        addLog(data.message, data.level, data.timestamp);
+                    }
+                });
+                
+                socket.on('stats_update', (stats) => {
+                    if (typeof updateStats === 'function') {
+                        updateStats(stats);
+                    }
+                    // Mettre à jour les stats du drawer
+                    const drawerTotalJobs = document.getElementById('drawerTotalJobs');
+                    const drawerTotalApps = document.getElementById('drawerTotalApps');
+                    const drawerSent = document.getElementById('drawerSent');
+                    const drawerFailed = document.getElementById('drawerFailed');
+                    
+                    if (drawerTotalJobs) drawerTotalJobs.textContent = stats.total_jobs || 0;
+                    if (drawerTotalApps) drawerTotalApps.textContent = stats.total_applications || 0;
+                    if (drawerSent) drawerSent.textContent = stats.sent_applications || 0;
+                    if (drawerFailed) drawerFailed.textContent = stats.failed_applications || 0;
+                });
+            }
+        } catch (e) {
+            console.log('Socket.IO non disponible (normal si non configuré)');
+        }
+        
+        // Initialiser le statut sans Socket.IO
+        document.addEventListener('DOMContentLoaded', () => {
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            if (statusIndicator) {
+                statusIndicator.classList.add('active');
+                statusIndicator.classList.remove('inactive');
+            }
+            if (statusText) {
+                statusText.textContent = 'Prêt';
+            }
+        });
         
         // Gestion du drawer
         function toggleDrawer() {
@@ -890,53 +959,6 @@
         
         // Initialiser le thème
         setTheme(getTheme());
-        
-        // WebSocket events
-        socket.on('connect', () => {
-            const statusIndicator = document.getElementById('statusIndicator');
-            const statusText = document.getElementById('statusText');
-            if (statusIndicator) {
-                statusIndicator.classList.add('active');
-                statusIndicator.classList.remove('inactive');
-            }
-            if (statusText) {
-                statusText.textContent = 'Prêt';
-            }
-        });
-        
-        socket.on('disconnect', () => {
-            const statusIndicator = document.getElementById('statusIndicator');
-            const statusText = document.getElementById('statusText');
-            if (statusIndicator) {
-                statusIndicator.classList.remove('active');
-                statusIndicator.classList.add('inactive');
-            }
-            if (statusText) {
-                statusText.textContent = 'Déconnecté';
-            }
-        });
-        
-        socket.on('log', (data) => {
-            if (typeof addLog === 'function') {
-                addLog(data.message, data.level, data.timestamp);
-            }
-        });
-        
-        socket.on('stats_update', (stats) => {
-            if (typeof updateStats === 'function') {
-                updateStats(stats);
-            }
-            // Mettre à jour les stats du drawer
-            const drawerTotalJobs = document.getElementById('drawerTotalJobs');
-            const drawerTotalApps = document.getElementById('drawerTotalApps');
-            const drawerSent = document.getElementById('drawerSent');
-            const drawerFailed = document.getElementById('drawerFailed');
-            
-            if (drawerTotalJobs) drawerTotalJobs.textContent = stats.total_jobs || 0;
-            if (drawerTotalApps) drawerTotalApps.textContent = stats.total_applications || 0;
-            if (drawerSent) drawerSent.textContent = stats.sent_applications || 0;
-            if (drawerFailed) drawerFailed.textContent = stats.failed_applications || 0;
-        });
         
         // Fermer le drawer sur mobile après clic
         if (window.innerWidth <= 768) {
